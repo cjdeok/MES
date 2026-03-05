@@ -2,11 +2,18 @@ import os
 import json
 import sqlite3
 from flask import Flask, render_template, jsonify, request
+from jinja2 import ChoiceLoader, FileSystemLoader
 
 app = Flask(__name__)
 
 # 파일 경로 스키마 정의
 BASE_DIR = r'c:\Users\ENS-1000\Documents\Antigravity\MES'
+
+# 템플릿 검색 경로 설정: 기존 templates 폴더와 루트 디렉토리 모두 포함
+app.jinja_loader = ChoiceLoader([
+    FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')),
+    FileSystemLoader(BASE_DIR)
+])
 JSON_FILE = os.path.join(BASE_DIR, '.tmp', 'material_master.json')
 DB_FILE = os.path.join(BASE_DIR, 'mes_database.db')
 
