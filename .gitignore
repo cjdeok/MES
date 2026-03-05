@@ -1,0 +1,43 @@
+# Environment variables
+.env
+
+# Temporary and intermediate files
+.tmp/
+credentials.json
+token.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project specific
+*.csv
+*.xlsx
+!directives/**/*.csv
+!execution/**/*.csv

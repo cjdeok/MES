@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>생산 관리 - 원료 할당</title>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .home-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.05);
+            transition: all 0.2s;
+        }
+
+        .home-btn:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        #kit-qty-input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: rgba(0, 0, 0, 0.2);
+            color: var(--text-main);
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        #kit-qty-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .action-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0 2rem;
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .action-btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .alloc-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .alloc-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.9rem;
+        }
+
+        .alloc-item:last-child {
+            border-bottom: none;
+        }
+
+        .lot-badge {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .date-badge {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .qty-badge {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .shortage {
+            color: #ef4444;
+            font-weight: bold;
+        }
+
+        .success-text {
+            color: #10b981;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="glass-header">
+            <div class="logo">
+                <i class="fa-solid fa-industry"></i>
+                <h1>생산 관리 <span style="font-size:0.9rem; color:var(--text-muted); font-weight:normal;">(원료 할당
+                        시뮬레이션)</span></h1>
+            </div>
+            <div class="user-profile">
+                <a href="/" class="home-btn"><i class="fa-solid fa-house"></i> 홈으로 가기</a>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Control Panel -->
+            <section class="control-panel glass-panel">
+                <h2><i class="fa-solid fa-calculator"></i> 생산 지시</h2>
+                <div class="filter-group" style="grid-template-columns: 2fr 1fr;">
+                    <div class="input-wrapper">
+                        <label for="kit-qty-input">키트 생산 수량 (1 ~ 256)</label>
+                        <input type="number" id="kit-qty-input" min="1" max="256" placeholder="예: 10">
+                    </div>
+                    <div class="input-wrapper" style="display: flex; align-items: flex-end;">
+                        <button id="calc-btn" class="action-btn" style="height: 45px; width: 100%;">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> 소요량 계산
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Loading Spinner -->
+            <div id="loading" class="hidden">
+                <div class="spinner"></div>
+                <p>BOM 전개 및 선입선출 재고 할당 중...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="empty-state">
+                <i class="fa-solid fa-clipboard-check"></i>
+                <p>생산 수량을 입력하고 계산 버튼을 눌러주세요.</p>
+            </div>
+
+            <!-- Results Section -->
+            <section id="results-section" class="results-section hidden">
+                <!-- History Table -->
+                <div class="history-panel glass-panel">
+                    <div class="panel-header">
+                        <h2><i class="fa-solid fa-list-check"></i> 선입선출 기반 원료 할당 결과</h2>
+                        <span id="kit-label" class="badge"></span>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>원료 코드 / 원료명</th>
+                                    <th style="text-align: right;">필요 수량</th>
+                                    <th>할당 내역 (Lot / 입고일 / 할당수량)</th>
+                                    <th style="text-align: right;">부족 수량</th>
+                                    <th style="text-align: center;">상태</th>
+                                </tr>
+                            </thead>
+                            <tbody id="production-tbody">
+                                <!-- Data will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/js/production.js"></script>
+</body>
+
+</html>

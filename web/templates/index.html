@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MES 통합 관리 시스템 - 홈</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --sidebar-width: 230px;
+        }
+
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+        }
+
+        /* ─── Sidebar ─── */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            padding: 2rem 1.2rem;
+            gap: 1rem;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        .sidebar-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: var(--text-main);
+            padding: 0.9rem 1.1rem;
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.25s;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .nav-btn i {
+            font-size: 1.1rem;
+            color: var(--primary);
+            width: 20px;
+            text-align: center;
+        }
+
+        .nav-btn:hover {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.4);
+            color: white;
+            transform: translateX(-3px);
+        }
+
+        /* ─── Main Content (left of sidebar) ─── */
+        .main-content {
+            margin-right: var(--sidebar-width);
+            padding: 2rem 2.5rem;
+            min-height: 100vh;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .page-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 0.4rem;
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 2rem;
+        }
+
+        /* ─── Stock Summary Grid ─── */
+        .stock-panel {
+            border-radius: var(--radius-lg);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.2rem;
+        }
+
+        .panel-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .panel-header h2 i {
+            color: var(--primary);
+        }
+
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            padding: 0.4rem 0.9rem;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(59, 130, 246, 0.15);
+            color: white;
+        }
+
+        /* 카드 그리드: 6열 고정 */
+        .stock-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 0.75rem;
+            flex: 1;
+            overflow: visible;
+        }
+
+        /* 그룹 헤더 */
+        .group-header {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.4rem 0 0.2rem;
+            margin-top: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .group-header:first-child {
+            margin-top: 0;
+        }
+
+        .group-badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            background: rgba(59, 130, 246, 0.18);
+            color: #60a5fa;
+            padding: 0.18rem 0.55rem;
+            border-radius: 4px;
+        }
+
+        .group-label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .stock-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-md);
+            padding: 0.9rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            transition: background 0.2s, border-color 0.2s, transform 0.15s;
+        }
+
+        .stock-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(59, 130, 246, 0.35);
+            transform: translateY(-2px);
+        }
+
+        .card-code {
+            font-family: monospace;
+            font-size: 0.78rem;
+            background: rgba(59, 130, 246, 0.12);
+            color: #60a5fa;
+            padding: 0.15rem 0.45rem;
+            border-radius: 4px;
+            align-self: flex-start;
+        }
+
+        .card-name {
+            font-size: 0.88rem;
+            color: var(--text-main);
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card-stock {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-top: 0.2rem;
+        }
+
+        .card-unit {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-left: 0.25rem;
+        }
+
+        .stock-pos {
+            color: #10b981;
+        }
+
+        .stock-zero {
+            color: var(--text-muted);
+        }
+
+        .stock-neg {
+            color: #ef4444;
+        }
+
+        #stock-loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Right Sidebar Navigation -->
+    <aside class="sidebar">
+        <p class="sidebar-title">메뉴</p>
+        <a href="/inventory" class="nav-btn">
+            <i class="fa-solid fa-boxes-stacked"></i>
+            재고 모니터링
+        </a>
+        <a href="/producible" class="nav-btn">
+            <i class="fa-solid fa-flask-vial"></i>
+            생산가능수량
+        </a>
+        <a href="/production" class="nav-btn">
+            <i class="fa-solid fa-industry"></i>
+            생산 관리
+        </a>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <h1 class="page-title"><i class="fa-solid fa-layer-group"
+                style="color:var(--primary); margin-right: 0.5rem;"></i> MES 통합 관리 시스템</h1>
+        <p class="page-subtitle">원료별 전체 재고 현황을 확인하세요. 상세 조회 및 생산 관리는 우측 메뉴를 이용하세요.</p>
+
+        <!-- Stock Summary Panel -->
+        <div class="stock-panel glass-panel">
+            <div class="panel-header">
+                <h2><i class="fa-solid fa-chart-bar"></i> 원료별 재고 현황</h2>
+                <button class="refresh-btn" id="refresh-btn">
+                    <i class="fa-solid fa-rotate-right"></i> 새로고침
+                </button>
+            </div>
+            <div class="stock-grid" id="stock-grid">
+                <div id="stock-loading"><i class="fa-solid fa-circle-notch fa-spin"></i> 데이터를 불러오는 중입니다...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadStockSummary() {
+            const grid = document.getElementById('stock-grid');
+            const loading = document.getElementById('stock-loading');
+
+            // 기존 카드 제거 (로딩 표시만 남김)
+            [...grid.children].forEach(el => { if (el !== loading) el.remove(); });
+            loading.style.display = 'block';
+            loading.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 데이터를 불러오는 중입니다...';
+
+            try {
+                const res = await fetch('/api/stock/summary');
+                const result = await res.json();
+
+                loading.style.display = 'none';
+
+                if (result.status === 'success') {
+                    // 첫 글자 기준으로 그룹화
+                    const GROUP_LABELS = { B: 'BCM — Breast Cancer Material', C: 'CMA — Chemical Material', E: 'EMA — Extra Material' };
+                    const groups = {};
+                    result.data.forEach(row => {
+                        const key = (row.item_code ?? '').charAt(0).toUpperCase();
+                        if (!groups[key]) groups[key] = [];
+                        groups[key].push(row);
+                    });
+
+                    // 그룹 순서 정렬 후 렌더링
+                    Object.keys(groups).sort().forEach(key => {
+                        // 그룹 헤더
+                        const header = document.createElement('div');
+                        header.className = 'group-header';
+                        header.innerHTML = `<span class="group-badge">${key}</span><span class="group-label">${GROUP_LABELS[key] ?? key + ' 그룹'}</span>`;
+                        grid.appendChild(header);
+
+                        // 카드
+                        groups[key].forEach(row => {
+                            const stock = row.total_stock ?? 0;
+                            const stockClass = stock > 0 ? 'stock-pos' : (stock < 0 ? 'stock-neg' : 'stock-zero');
+                            const card = document.createElement('div');
+                            card.className = 'stock-card';
+                            card.innerHTML = `
+                                <span class="card-code">${row.item_code ?? '-'}</span>
+                                <span class="card-name" title="${row.product_name ?? ''}">${row.product_name ?? '-'}</span>
+                                <span class="card-stock ${stockClass}">${stock.toLocaleString()}<span class="card-unit">${row.unit ?? ''}</span></span>
+                            `;
+                            grid.appendChild(card);
+                        });
+                    });
+                }
+            } catch (e) {
+                loading.style.display = 'block';
+                loading.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 데이터를 불러올 수 없습니다.';
+            }
+        }
+
+        document.getElementById('refresh-btn').addEventListener('click', loadStockSummary);
+        loadStockSummary();
+    </script>
+</body>
+
+</html>

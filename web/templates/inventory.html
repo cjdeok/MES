@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MES 원료 및 Lot 조회</title>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="glass-header">
+            <div class="logo">
+                <i class="fa-solid fa-boxes-stacked"></i>
+                <h1>재고 모니터링</h1>
+            </div>
+            <div class="user-profile">
+                <a href="/" class="home-btn"
+                    style="display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-muted); text-decoration: none; padding: 0.5rem 1rem; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.05); transition: all 0.2s;"><i
+                        class="fa-solid fa-house"></i> 홈으로 가기</a>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Control Panel -->
+            <section class="control-panel glass-panel">
+                <h2><i class="fa-solid fa-filter"></i> 조회 조건</h2>
+                <div class="filter-group">
+                    <div class="input-wrapper">
+                        <label for="material-select">원부자재 선택</label>
+                        <select id="material-select">
+                            <option value="">원료를 선택하세요...</option>
+                        </select>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="lot-select">Lot 번호 선택</label>
+                        <select id="lot-select" disabled>
+                            <option value="">Lot 번호를 선택하세요...</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Loading Spinner -->
+            <div id="loading" class="hidden">
+                <div class="spinner"></div>
+                <p>데이터를 불러오는 중입니다...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="empty-state">
+                <i class="fa-solid fa-box-open"></i>
+                <p>조회할 원료 및 Lot를 선택해주세요.</p>
+            </div>
+
+            <!-- Results Section -->
+            <section id="results-section" class="results-section hidden">
+                <!-- Summary Cards -->
+                <div class="summary-cards">
+                    <div class="card in-card glass-panel">
+                        <div class="card-icon"><i class="fa-solid fa-arrow-down"></i></div>
+                        <div class="card-info">
+                            <h3>총 입고량</h3>
+                            <p id="total-in" class="value">0</p>
+                        </div>
+                    </div>
+                    <div class="card out-card glass-panel">
+                        <div class="card-icon"><i class="fa-solid fa-arrow-up"></i></div>
+                        <div class="card-info">
+                            <h3>총 출고량</h3>
+                            <p id="total-out" class="value">0</p>
+                        </div>
+                    </div>
+                    <div class="card stock-card glass-panel highlight">
+                        <div class="card-icon"><i class="fa-solid fa-boxes-packing"></i></div>
+                        <div class="card-info">
+                            <h3>현재고</h3>
+                            <p id="current-stock" class="value">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Material Details Panel -->
+                <div id="material-info-panel" class="material-info-panel glass-panel hidden">
+                    <div class="info-item">
+                        <i class="fa-regular fa-calendar-check"></i>
+                        <div class="info-content">
+                            <h4>입고일</h4>
+                            <span id="info-receive-date">-</span>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <i class="fa-solid fa-microscope"></i>
+                        <div class="info-content">
+                            <h4>Q.C.일자</h4>
+                            <span id="info-qc-date">-</span>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <i class="fa-regular fa-calendar-xmark"></i>
+                        <div class="info-content">
+                            <h4>유효기간</h4>
+                            <span id="info-expire-date">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Table -->
+                <div class="history-panel glass-panel">
+                    <div class="panel-header">
+                        <h2><i class="fa-solid fa-clock-rotate-left"></i> 상세 입출고 내역</h2>
+                        <span id="product-label" class="badge"></span>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>일자</th>
+                                    <th>구분</th>
+                                    <th>수량</th>
+                                    <th>사용 목적</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-tbody">
+                                <!-- Data will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+
+</html>
