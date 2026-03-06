@@ -9,12 +9,13 @@ app = Flask(__name__)
 # 파일 경로 스키마 정의
 BASE_DIR = r'c:\Users\ENS-1000\Documents\Antigravity\MES'
 
-# 템플릿 검색 경로 설정: 기존 templates 폴더와 루트 디렉토리 모두 포함
+# 템플릿 검색 경로 설정: 루트(index.html) → web/templates(나머지 페이지) 순서로 탐색
 app.jinja_loader = ChoiceLoader([
-    FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')),
-    FileSystemLoader(BASE_DIR)
+    FileSystemLoader(BASE_DIR),
+    FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates'))
 ])
 JSON_FILE = os.path.join(BASE_DIR, '.tmp', 'material_master.json')
+THRESHOLD_FILE = os.path.join(BASE_DIR, '.tmp', 'inventory_thresholds.json')
 DB_FILE = os.path.join(BASE_DIR, 'mes_database.db')
 
 def get_db_connection():
@@ -37,6 +38,10 @@ def production():
 @app.route('/producible')
 def producible():
     return render_template('producible.html')
+
+@app.route('/material-info')
+def material_info():
+    return render_template('material_info.html')
 
 @app.route('/api/producible')
 def get_producible():
@@ -248,6 +253,59 @@ def get_stock_summary():
             row['unit'] = unit_map.get(row['item_code'], '')
 
         return jsonify({'status': 'success', 'data': rows})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/material-info')
+def get_material_info():
+    """원료 마스터 + 안전재고 + 현재고를 결합하여 반환"""
+    try:
+        # 1. material_master.json 로드
+        with open(JSON_FILE, 'r', encoding='utf-8') as f:
+            master = json.load(f)
+
+        # 2. inventory_thresholds.json 로드
+        thresholds = {}
+        try:
+            with open(THRESHOLD_FILE, 'r', encoding='utf-8') as f:
+                thresholds = json.load(f)
+        except Exception:
+            pass
+
+        # 3. DB에서 현재고 조회
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT item_code,
+                   SUM(CASE WHEN transaction_type = '입고' THEN quantity ELSE -quantity END) as total_stock
+            FROM raw_materials
+            GROUP BY item_code
+        ''')
+        stock_map = {row['item_code']: row['total_stock'] or 0 for row in cursor.fetchall()}
+        conn.close()
+
+        # 4. 데이터 결합
+        result = []
+        for code, info in master.items():
+            safe = thresholds.get(code, {}).get('safe_stock_level', None)
+            current = stock_map.get(code, 0)
+
+            result.append({
+                'item_code': code,
+                'product_name': info.get('제품명', ''),
+                'cat_no': info.get('Cat_No', ''),
+                'package_unit': info.get('포장단위', ''),
+                'unit': info.get('단위', ''),
+                'manufacturer': info.get('제조사', ''),
+                'storage_temp': info.get('보관온도', ''),
+                'storage_location': info.get('보관장소', ''),
+                'unit_price': info.get('단가', None),
+                'safe_stock': safe,
+                'current_stock': round(current, 4)
+            })
+
+        result.sort(key=lambda x: x['item_code'])
+        return jsonify({'status': 'success', 'data': result})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 

@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MES 원료 상세 정보</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ─── 테이블 검색/필터 ─── */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 220px;
+            position: relative;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.7rem 1rem 0.7rem 2.6rem;
+            border-radius: var(--radius-sm);
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .search-box input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .search-box input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .group-filter-btn {
+            padding: 0.55rem 1rem;
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.04em;
+        }
+
+        .group-filter-btn:hover {
+            background: rgba(59, 130, 246, 0.12);
+            border-color: rgba(59, 130, 246, 0.4);
+            color: #93bbfc;
+        }
+
+        .group-filter-btn.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--primary);
+            color: #fff;
+        }
+
+        /* ─── 상단 요약 카드 ─── */
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-md);
+            padding: 1.2rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.5);
+        }
+
+        .stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .stat-icon.blue {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--primary);
+        }
+
+        .stat-icon.green {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+        }
+
+        .stat-icon.amber {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+        }
+
+        .stat-icon.red {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+
+        .stat-text h4 {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-bottom: 0.15rem;
+        }
+
+        .stat-text .stat-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* ─── 테이블 ─── */
+        .info-table-wrap {
+            padding: 1.5rem;
+            animation: fadeIn 0.5s ease-in forwards;
+        }
+
+        .info-table-wrap .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.2rem;
+        }
+
+        .info-table-wrap .panel-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .info-table-wrap .panel-header h2 i {
+            color: var(--primary);
+        }
+
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .info-table th {
+            position: sticky;
+            top: 0;
+            background: rgba(15, 23, 42, 0.95);
+            z-index: 2;
+            padding: 0.85rem 0.8rem;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-align: left;
+            border-bottom: 1px solid var(--panel-border);
+            white-space: nowrap;
+        }
+
+        .info-table td {
+            padding: 0.75rem 0.8rem;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            white-space: nowrap;
+        }
+
+        .info-table tbody tr {
+            transition: background 0.15s;
+        }
+
+        .info-table tbody tr:hover {
+            background: rgba(59, 130, 246, 0.06);
+        }
+
+        .info-table tbody tr.row-warning {
+            background: rgba(239, 68, 68, 0.06);
+        }
+
+        .info-table tbody tr.row-warning:hover {
+            background: rgba(239, 68, 68, 0.12);
+        }
+
+        .info-table .code-cell {
+            font-family: monospace;
+            font-size: 0.82rem;
+            background: rgba(59, 130, 246, 0.12);
+            color: #60a5fa;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .info-table .price-cell {
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .info-table .safe-cell {
+            font-weight: 600;
+        }
+
+        .safe-ok {
+            color: var(--success);
+        }
+
+        .safe-warn {
+            color: var(--warning);
+        }
+
+        .safe-danger {
+            color: var(--danger);
+        }
+
+        .safe-na {
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .stock-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 0.2rem 0.6rem;
+            border-radius: 10px;
+        }
+
+        .stock-badge.ok {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--success);
+        }
+
+        .stock-badge.warn {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--warning);
+        }
+
+        .stock-badge.danger {
+            background: rgba(239, 68, 68, 0.12);
+            color: var(--danger);
+        }
+
+        .stock-badge.none {
+            background: rgba(148, 163, 184, 0.1);
+            color: var(--text-muted);
+        }
+
+        .table-scroll {
+            max-height: calc(100vh - 340px);
+            overflow-y: auto;
+            border-radius: var(--radius-sm);
+        }
+
+        .table-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .table-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .table-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+        }
+
+        .table-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .temp-badge {
+            font-size: 0.78rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .temp-cold {
+            background: rgba(59, 130, 246, 0.12);
+            color: #60a5fa;
+        }
+
+        .temp-cool {
+            background: rgba(16, 185, 129, 0.12);
+            color: #34d399;
+        }
+
+        .temp-room {
+            background: rgba(245, 158, 11, 0.12);
+            color: #fbbf24;
+        }
+
+        /* Loading */
+        #table-loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="glass-header">
+            <div class="logo">
+                <i class="fa-solid fa-list-check"></i>
+                <h1>원료 상세 정보</h1>
+            </div>
+            <div class="user-profile">
+                <a href="/" class="home-btn"
+                    style="display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-muted); text-decoration: none; padding: 0.5rem 1rem; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.05); transition: all 0.2s;">
+                    <i class="fa-solid fa-house"></i> 홈으로 가기
+                </a>
+            </div>
+        </header>
+
+        <main>
+            <!-- 요약 통계 카드 -->
+            <div class="stat-cards">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fa-solid fa-cubes"></i></div>
+                    <div class="stat-text">
+                        <h4>등록 원료 수</h4>
+                        <span class="stat-value" id="stat-total">-</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="fa-solid fa-check-circle"></i></div>
+                    <div class="stat-text">
+                        <h4>안전재고 충족</h4>
+                        <span class="stat-value" id="stat-ok">-</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon amber"><i class="fa-solid fa-exclamation-triangle"></i></div>
+                    <div class="stat-text">
+                        <h4>안전재고 미달</h4>
+                        <span class="stat-value" id="stat-warn">-</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon red"><i class="fa-solid fa-circle-xmark"></i></div>
+                    <div class="stat-text">
+                        <h4>재고 없음</h4>
+                        <span class="stat-value" id="stat-zero">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 테이블 패널 -->
+            <div class="info-table-wrap glass-panel">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-database"></i> 원료 마스터 & 안전재고</h2>
+                </div>
+                <div class="toolbar" style="margin-bottom: 1rem;">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="search-input" placeholder="원료 코드 또는 이름 검색..." autocomplete="off">
+                    </div>
+                    <button class="group-filter-btn active" data-group="ALL">전체</button>
+                    <button class="group-filter-btn" data-group="B">BCM</button>
+                    <button class="group-filter-btn" data-group="C">CMA</button>
+                    <button class="group-filter-btn" data-group="E">EMA</button>
+                </div>
+
+                <div class="table-scroll">
+                    <table class="info-table">
+                        <thead>
+                            <tr>
+                                <th>코드</th>
+                                <th>제품명</th>
+                                <th>Cat No.</th>
+                                <th>제조사</th>
+                                <th>포장단위</th>
+                                <th>단위</th>
+                                <th style="text-align:right;">단가 (₩)</th>
+                                <th style="text-align:right;">현재고</th>
+                                <th style="text-align:right;">안전재고</th>
+                                <th>상태</th>
+                                <th>보관온도</th>
+                                <th>보관장소</th>
+                            </tr>
+                        </thead>
+                        <tbody id="info-tbody">
+                            <tr>
+                                <td colspan="12" id="table-loading">
+                                    <i class="fa-solid fa-circle-notch fa-spin"></i> 데이터를 불러오는 중입니다...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let allRows = [];
+        let activeGroup = 'ALL';
+
+        document.addEventListener('DOMContentLoaded', loadMaterialInfo);
+
+        // 검색
+        document.getElementById('search-input').addEventListener('input', renderTable);
+
+        // 그룹 필터
+        document.querySelectorAll('.group-filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.group-filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeGroup = btn.dataset.group;
+                renderTable();
+            });
+        });
+
+        async function loadMaterialInfo() {
+            try {
+                const res = await fetch('/api/material-info');
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    allRows = result.data;
+                    updateStats(allRows);
+                    renderTable();
+                }
+            } catch (e) {
+                document.getElementById('info-tbody').innerHTML =
+                    '<tr><td colspan="12" class="no-data"><i class="fa-solid fa-triangle-exclamation"></i> 데이터를 불러올 수 없습니다.</td></tr>';
+            }
+        }
+
+        function updateStats(rows) {
+            document.getElementById('stat-total').textContent = rows.length;
+
+            let okCount = 0, warnCount = 0, zeroCount = 0;
+            rows.forEach(r => {
+                if (r.current_stock <= 0) zeroCount++;
+                else if (r.safe_stock !== null && r.current_stock < r.safe_stock) warnCount++;
+                else okCount++;
+            });
+
+            document.getElementById('stat-ok').textContent = okCount;
+            document.getElementById('stat-warn').textContent = warnCount;
+            document.getElementById('stat-zero').textContent = zeroCount;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('info-tbody');
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+
+            let filtered = allRows;
+
+            // 그룹 필터
+            if (activeGroup !== 'ALL') {
+                filtered = filtered.filter(r => r.item_code.charAt(0).toUpperCase() === activeGroup);
+            }
+
+            // 검색 필터
+            if (query) {
+                filtered = filtered.filter(r =>
+                    r.item_code.toLowerCase().includes(query) ||
+                    (r.product_name || '').toLowerCase().includes(query) ||
+                    (r.cat_no || '').toLowerCase().includes(query) ||
+                    (r.manufacturer || '').toLowerCase().includes(query)
+                );
+            }
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="12" class="no-data">검색 결과가 없습니다.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map((r, idx) => {
+                const stock = r.current_stock ?? 0;
+                const safe = r.safe_stock;
+                const isWarning = safe !== null && safe > 0 && stock < safe;
+                const isZero = stock <= 0;
+
+                // 상태 배지 결정
+                let badgeClass, badgeText, badgeIcon;
+                if (safe === null || safe === 0) {
+                    badgeClass = 'none';
+                    badgeText = '-';
+                    badgeIcon = '';
+                } else if (isZero) {
+                    badgeClass = 'danger';
+                    badgeText = '재고없음';
+                    badgeIcon = '<i class="fa-solid fa-circle-xmark"></i>';
+                } else if (isWarning) {
+                    badgeClass = 'warn';
+                    badgeText = '미달';
+                    badgeIcon = '<i class="fa-solid fa-exclamation"></i>';
+                } else {
+                    badgeClass = 'ok';
+                    badgeText = '충족';
+                    badgeIcon = '<i class="fa-solid fa-check"></i>';
+                }
+
+                // 보관온도 배지
+                let tempClass = 'temp-room';
+                if ((r.storage_temp || '').includes('-20') || (r.storage_temp || '').includes('이하')) {
+                    tempClass = 'temp-cold';
+                } else if ((r.storage_temp || '').includes('2~8') || (r.storage_temp || '').includes('냉장')) {
+                    tempClass = 'temp-cool';
+                }
+
+                // 안전재고 색상
+                let safeClass = 'safe-na';
+                if (safe !== null && safe > 0) {
+                    if (isZero) safeClass = 'safe-danger';
+                    else if (isWarning) safeClass = 'safe-warn';
+                    else safeClass = 'safe-ok';
+                }
+
+                // 현재고 색상
+                let stockColorClass = stock > 0 ? 'safe-ok' : (stock < 0 ? 'safe-danger' : 'safe-na');
+
+                const rowClass = (isWarning || isZero) && safe !== null && safe > 0 ? 'row-warning' : '';
+
+                return `<tr class="${rowClass}" style="animation: fadeIn 0.3s ease-in forwards ${Math.min(idx * 0.02, 0.5)}s; opacity:0;">
+                    <td><span class="code-cell">${r.item_code}</span></td>
+                    <td>${r.product_name || '-'}</td>
+                    <td style="color: var(--text-muted);">${r.cat_no || '-'}</td>
+                    <td>${r.manufacturer || '-'}</td>
+                    <td style="color: var(--text-muted); font-size:0.82rem;">${r.package_unit || '-'}</td>
+                    <td>${r.unit || '-'}</td>
+                    <td class="price-cell" style="text-align:right;">${r.unit_price ? '₩' + Number(r.unit_price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}) : '-'}</td>
+                    <td class="${stockColorClass}" style="text-align:right; font-weight:600;">${stock !== null ? stock.toLocaleString() : '-'}<span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.2rem;">${r.unit || ''}</span></td>
+                    <td class="${safeClass} safe-cell" style="text-align:right;">${safe !== null && safe > 0 ? safe.toLocaleString() : '-'}</td>
+                    <td><span class="stock-badge ${badgeClass}">${badgeIcon} ${badgeText}</span></td>
+                    <td><span class="temp-badge ${tempClass}">${r.storage_temp || '-'}</span></td>
+                    <td style="font-size:0.82rem;">${r.storage_location && r.storage_location !== '0' ? r.storage_location : '-'}</td>
+                </tr>`;
+            }).join('');
+        }
+    </script>
+</body>
+
+</html>
