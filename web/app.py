@@ -1,6 +1,8 @@
 import os
+import io
 import json
 import sqlite3
+import openpyxl
 from flask import Flask, render_template, jsonify, request
 from jinja2 import ChoiceLoader, FileSystemLoader
 
@@ -42,6 +44,10 @@ def producible():
 @app.route('/material-info')
 def material_info():
     return render_template('material_info.html')
+
+@app.route('/upload-usage')
+def upload_usage():
+    return render_template('upload_usage.html')
 
 @app.route('/api/producible')
 def get_producible():
@@ -381,6 +387,90 @@ def calculate_production():
         return jsonify({'status': 'success', 'data': results})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/usage/upload', methods=['POST'])
+def upload_usage_api():
+    """엑셀 파일로 원료 사용량(출고)을 일괄 업로드"""
+    if 'file' not in request.files:
+        return jsonify({'status': 'error', 'message': '파일이 첨부되지 않았습니다.'}), 400
+
+    file = request.files['file']
+    if not file.filename or not file.filename.endswith('.xlsx'):
+        return jsonify({'status': 'error', 'message': '.xlsx 파일만 업로드 가능합니다.'}), 400
+
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(file.read()), read_only=True, data_only=True)
+        ws = wb.active
+
+        rows = list(ws.iter_rows(min_row=2, values_only=True))  # 헤더 제외
+        wb.close()
+
+        if not rows:
+            return jsonify({'status': 'error', 'message': '데이터가 없습니다. 2행부터 데이터를 입력해 주세요.'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        success_count = 0
+        errors = []
+
+        for idx, row in enumerate(rows, start=2):
+            try:
+                item_code = str(row[0] or '').strip()
+                product_name = str(row[1] or '').strip()
+                lot_no = str(row[2] or '').strip()
+                transaction_date = str(row[3] or '').strip()
+                purpose = str(row[4] or '').strip()
+                quantity = row[5]
+
+                if not item_code or quantity is None:
+                    errors.append(f'{idx}행: 원료코드 또는 사용량이 비어 있습니다.')
+                    continue
+
+                quantity = float(quantity)
+                if quantity <= 0:
+                    errors.append(f'{idx}행: 사용량은 0보다 커야 합니다. (값: {quantity})')
+                    continue
+
+                cursor.execute('''
+                    INSERT INTO raw_materials (product_name, item_code, lot_no, transaction_type, transaction_date, purpose, quantity)
+                    VALUES (?, ?, ?, '출고', ?, ?, ?)
+                ''', (product_name, item_code, lot_no, transaction_date, purpose, quantity))
+                success_count += 1
+            except Exception as e:
+                errors.append(f'{idx}행: {str(e)}')
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'status': 'success',
+            'success_count': success_count,
+            'error_count': len(errors),
+            'errors': errors
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'파일 처리 중 오류: {str(e)}'}), 500
+
+
+@app.route('/api/usage/recent')
+def get_recent_usage():
+    """최근 출고 이력 조회 (최대 50건)"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, item_code, product_name, lot_no, transaction_date, purpose, quantity
+            FROM raw_materials
+            WHERE transaction_type = '출고'
+            ORDER BY id DESC
+            LIMIT 50
+        ''')
+        rows = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return jsonify({'status': 'success', 'data': rows})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(port=5000, debug=True)

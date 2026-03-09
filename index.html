@@ -9,76 +9,95 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root {
-            --sidebar-width: 230px;
-        }
-
         body {
             margin: 0;
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             min-height: 100vh;
         }
 
-        /* ─── Sidebar ─── */
-        .sidebar {
+        /* ─── Top Header ─── */
+        .top-header {
             position: fixed;
             top: 0;
+            left: 0;
             right: 0;
-            width: var(--sidebar-width);
-            height: 100vh;
-            background: rgba(255, 255, 255, 0.05);
+            height: 64px;
+            background: rgba(15, 23, 42, 0.85);
             backdrop-filter: blur(20px);
-            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
             display: flex;
-            flex-direction: column;
-            padding: 2rem 1.2rem;
-            gap: 1rem;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
             box-sizing: border-box;
-            z-index: 10;
+            z-index: 100;
+            gap: 1.5rem;
         }
 
-        .sidebar-title {
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 0.5rem;
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+
+        .header-brand i {
+            font-size: 1.2rem;
+            color: var(--primary);
+        }
+
+        .header-brand span {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.01em;
+            white-space: nowrap;
+        }
+
+        .header-nav {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .nav-btn {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.5rem;
             text-decoration: none;
             color: var(--text-main);
-            padding: 0.9rem 1.1rem;
+            padding: 0.5rem 0.95rem;
             border-radius: var(--radius-md);
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: all 0.25s;
-            font-size: 0.95rem;
+            transition: all 0.2s;
+            font-size: 0.875rem;
             font-weight: 500;
+            white-space: nowrap;
         }
 
         .nav-btn i {
-            font-size: 1.1rem;
+            font-size: 0.95rem;
             color: var(--primary);
-            width: 20px;
-            text-align: center;
         }
 
         .nav-btn:hover {
             background: rgba(59, 130, 246, 0.15);
             border-color: rgba(59, 130, 246, 0.4);
             color: white;
-            transform: translateX(-3px);
+            transform: translateY(-1px);
         }
 
-        /* ─── Main Content (left of sidebar) ─── */
+        .nav-btn:hover i {
+            color: #93c5fd;
+        }
+
+        /* ─── Main Content ─── */
         .main-content {
-            margin-right: var(--sidebar-width);
             padding: 2rem 2.5rem;
+            padding-top: calc(64px + 2rem);
             min-height: 100vh;
             box-sizing: border-box;
             display: flex;
@@ -258,32 +277,41 @@
 </head>
 
 <body>
-    <!-- Right Sidebar Navigation -->
-    <aside class="sidebar">
-        <p class="sidebar-title">메뉴</p>
-        <a href="/material-info" class="nav-btn">
-            <i class="fa-solid fa-list-check"></i>
-            원료 상세 정보
+    <!-- Top Header Navigation -->
+    <header class="top-header">
+        <a href="/" class="header-brand">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>MES 통합 관리 시스템</span>
         </a>
-        <a href="/inventory" class="nav-btn">
-            <i class="fa-solid fa-boxes-stacked"></i>
-            재고 모니터링
-        </a>
-        <a href="/producible" class="nav-btn">
-            <i class="fa-solid fa-flask-vial"></i>
-            생산가능수량
-        </a>
-        <a href="/production" class="nav-btn">
-            <i class="fa-solid fa-industry"></i>
-            생산 관리
-        </a>
-    </aside>
+        <nav class="header-nav">
+            <a href="/material-info" class="nav-btn">
+                <i class="fa-solid fa-list-check"></i>
+                원료 상세 정보
+            </a>
+            <a href="/inventory" class="nav-btn">
+                <i class="fa-solid fa-boxes-stacked"></i>
+                재고 모니터링
+            </a>
+            <a href="/producible" class="nav-btn">
+                <i class="fa-solid fa-flask-vial"></i>
+                생산가능수량
+            </a>
+            <a href="/production" class="nav-btn">
+                <i class="fa-solid fa-industry"></i>
+                생산 관리
+            </a>
+            <a href="/upload-usage" class="nav-btn">
+                <i class="fa-solid fa-file-arrow-up"></i>
+                사용량 업로드
+            </a>
+        </nav>
+    </header>
 
     <!-- Main Content -->
     <div class="main-content">
-        <h1 class="page-title"><i class="fa-solid fa-layer-group"
-                style="color:var(--primary); margin-right: 0.5rem;"></i> MES 통합 관리 시스템</h1>
-        <p class="page-subtitle">원료별 전체 재고 현황을 확인하세요. 상세 조회 및 생산 관리는 우측 메뉴를 이용하세요.</p>
+        <h1 class="page-title"><i class="fa-solid fa-chart-bar" style="color:var(--primary); margin-right: 0.5rem;"></i>
+            원료 재고 현황</h1>
+        <p class="page-subtitle">원료별 전체 재고 현황을 확인하세요. 상세 조회 및 생산 관리는 상단 메뉴를 이용하세요.</p>
 
         <!-- Stock Summary Panel -->
         <div class="stock-panel glass-panel">

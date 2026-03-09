@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>원료 사용량 업로드 - MES</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+        }
+
+        .page-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem 2.5rem;
+        }
+
+        /* ─── Header ─── */
+        .page-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: rgba(59, 130, 246, 0.15);
+            color: white;
+        }
+
+        .header-text h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 0.3rem;
+        }
+
+        .header-text p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* ─── Upload Zone ─── */
+        .upload-section {
+            margin-bottom: 2rem;
+        }
+
+        .drop-zone {
+            border: 2px dashed rgba(59, 130, 246, 0.35);
+            border-radius: var(--radius-lg);
+            padding: 3rem 2rem;
+            text-align: center;
+            background: rgba(59, 130, 246, 0.04);
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .drop-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.1);
+            transform: scale(1.01);
+        }
+
+        .drop-zone-icon {
+            font-size: 2.8rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            opacity: 0.8;
+        }
+
+        .drop-zone-text {
+            font-size: 1.05rem;
+            color: var(--text-main);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .drop-zone-hint {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 1.2rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .browse-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.7rem 1.5rem;
+            border-radius: var(--radius-sm);
+            background: var(--primary);
+            color: white;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .browse-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        /* ─── Selected File Info ─── */
+        .file-info {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            margin-top: 1rem;
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: var(--radius-md);
+        }
+
+        .file-info.show {
+            display: flex;
+        }
+
+        .file-info-left {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .file-info-left i {
+            color: var(--success);
+            font-size: 1.2rem;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .file-size {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .remove-file-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 0.3rem;
+            transition: color 0.2s;
+        }
+
+        .remove-file-btn:hover {
+            color: var(--danger);
+        }
+
+        /* ─── Preview Table ─── */
+        .preview-section {
+            display: none;
+            margin-bottom: 2rem;
+        }
+
+        .preview-section.show {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .section-title i {
+            color: var(--primary);
+        }
+
+        .row-count-badge {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            padding: 0.25rem 0.7rem;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .preview-table-wrap {
+            max-height: 320px;
+            overflow-y: auto;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .preview-table-wrap::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .preview-table-wrap::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .preview-table-wrap::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+        }
+
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+        }
+
+        .preview-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        .preview-table th {
+            background: rgba(15, 23, 42, 0.95);
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.8rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .preview-table td {
+            padding: 0.7rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+        }
+
+        .preview-table tr:hover td {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .cell-code {
+            font-family: 'Consolas', monospace;
+            background: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.82rem;
+        }
+
+        .cell-qty {
+            font-weight: 600;
+            color: var(--danger);
+        }
+
+        /* ─── Upload Button ─── */
+        .action-bar {
+            display: none;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .action-bar.show {
+            display: flex;
+        }
+
+        .upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.8rem 2rem;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .upload-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* ─── Result Banner ─── */
+        .result-banner {
+            display: none;
+            padding: 1.2rem 1.5rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 2rem;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .result-banner.show {
+            display: block;
+        }
+
+        .result-banner.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .result-banner.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .result-summary {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-summary i {
+            font-size: 1.2rem;
+        }
+
+        .result-banner.success .result-summary i {
+            color: var(--success);
+        }
+
+        .result-banner.error .result-summary i {
+            color: var(--danger);
+        }
+
+        .result-errors {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .result-errors p {
+            margin: 0.2rem 0;
+            padding-left: 1.8rem;
+        }
+
+        /* ─── Recent History ─── */
+        .recent-section {
+            margin-top: 1rem;
+        }
+
+        .history-table-wrap {
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .history-table-wrap::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .history-table-wrap::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .history-table-wrap::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+        }
+
+        /* ─── Template Download ─── */
+        .template-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            color: #60a5fa;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .template-link:hover {
+            color: var(--primary);
+        }
+
+        /* ─── Loading overlay ─── */
+        .upload-loading {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .upload-loading.show {
+            display: flex;
+        }
+
+        .upload-loading .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .upload-loading p {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .empty-history {
+            text-align: center;
+            padding: 2.5rem;
+            color: var(--text-muted);
+        }
+
+        .empty-history i {
+            font-size: 2rem;
+            margin-bottom: 0.8rem;
+            display: block;
+            opacity: 0.4;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Loading Overlay -->
+    <div class="upload-loading" id="upload-loading">
+        <div class="spinner"></div>
+        <p>업로드 중입니다...</p>
+    </div>
+
+    <div class="page-container">
+        <!-- Header -->
+        <div class="page-header">
+            <a href="/" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
+            <div class="header-text">
+                <h1><i class="fa-solid fa-file-arrow-up" style="color: var(--primary); margin-right: 0.3rem;"></i> 원료 사용량 업로드</h1>
+                <p>엑셀 파일(.xlsx)로 원료 사용량(출고) 데이터를 일괄 등록합니다.</p>
+            </div>
+        </div>
+
+        <!-- Upload Zone -->
+        <div class="upload-section">
+            <div class="drop-zone" id="drop-zone">
+                <i class="fa-solid fa-cloud-arrow-up drop-zone-icon"></i>
+                <p class="drop-zone-text">여기에 엑셀 파일을 드래그하거나</p>
+                <p class="drop-zone-hint">원료코드 · 원료명 · Lot No · 사용일자 · 사용목적 · 사용량 순서의 .xlsx 파일</p>
+                <button class="browse-btn" id="browse-btn">
+                    <i class="fa-solid fa-folder-open"></i> 파일 선택
+                </button>
+                <input type="file" class="file-input" id="file-input" accept=".xlsx">
+            </div>
+
+            <div class="file-info" id="file-info">
+                <div class="file-info-left">
+                    <i class="fa-solid fa-file-excel"></i>
+                    <div>
+                        <div class="file-name" id="file-name">-</div>
+                        <div class="file-size" id="file-size-text">-</div>
+                    </div>
+                </div>
+                <button class="remove-file-btn" id="remove-file-btn" title="파일 제거">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="preview-section" id="preview-section">
+            <div class="section-header">
+                <span class="section-title"><i class="fa-solid fa-table"></i> 업로드 미리보기</span>
+                <span class="row-count-badge" id="preview-count">0건</span>
+            </div>
+            <div class="preview-table-wrap">
+                <table class="preview-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>원료코드</th>
+                            <th>원료명</th>
+                            <th>Lot No</th>
+                            <th>사용일자</th>
+                            <th>사용목적</th>
+                            <th>사용량</th>
+                        </tr>
+                    </thead>
+                    <tbody id="preview-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Action Bar -->
+        <div class="action-bar" id="action-bar">
+            <button class="upload-btn" id="upload-btn">
+                <i class="fa-solid fa-paper-plane"></i> 업로드 실행
+            </button>
+        </div>
+
+        <!-- Result Banner -->
+        <div class="result-banner" id="result-banner">
+            <div class="result-summary" id="result-summary"></div>
+            <div class="result-errors" id="result-errors"></div>
+        </div>
+
+        <!-- Recent History -->
+        <div class="recent-section">
+            <div class="section-header">
+                <span class="section-title"><i class="fa-solid fa-clock-rotate-left"></i> 최근 출고 이력</span>
+                <button class="browse-btn" id="refresh-history" style="padding: 0.4rem 1rem; font-size: 0.82rem;">
+                    <i class="fa-solid fa-rotate-right"></i> 새로고침
+                </button>
+            </div>
+            <div class="history-table-wrap">
+                <table class="preview-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>원료코드</th>
+                            <th>원료명</th>
+                            <th>Lot No</th>
+                            <th>사용일자</th>
+                            <th>사용목적</th>
+                            <th>사용량</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body">
+                        <tr>
+                            <td colspan="7" class="empty-history">
+                                <i class="fa-solid fa-circle-notch fa-spin"></i>
+                                불러오는 중...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- SheetJS for client-side XLSX parsing (preview) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+    <script>
+        // ── Elements ──
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const browseBtn = document.getElementById('browse-btn');
+        const fileInfoEl = document.getElementById('file-info');
+        const fileNameEl = document.getElementById('file-name');
+        const fileSizeEl = document.getElementById('file-size-text');
+        const removeBtn = document.getElementById('remove-file-btn');
+        const previewSection = document.getElementById('preview-section');
+        const previewBody = document.getElementById('preview-body');
+        const previewCount = document.getElementById('preview-count');
+        const actionBar = document.getElementById('action-bar');
+        const uploadBtn = document.getElementById('upload-btn');
+        const resultBanner = document.getElementById('result-banner');
+        const resultSummary = document.getElementById('result-summary');
+        const resultErrors = document.getElementById('result-errors');
+        const loadingOverlay = document.getElementById('upload-loading');
+        const historyBody = document.getElementById('history-body');
+
+        let selectedFile = null;
+
+        // ── Drag & Drop ──
+        ['dragenter', 'dragover'].forEach(e => {
+            dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.add('dragover'); });
+        });
+        ['dragleave', 'drop'].forEach(e => {
+            dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.remove('dragover'); });
+        });
+        dropZone.addEventListener('drop', ev => {
+            const file = ev.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+        browseBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files[0]) handleFile(fileInput.files[0]);
+        });
+        removeBtn.addEventListener('click', resetFile);
+
+        // ── Handle file selection ──
+        function handleFile(file) {
+            if (!file.name.endsWith('.xlsx')) {
+                alert('.xlsx 파일만 업로드 가능합니다.');
+                return;
+            }
+            selectedFile = file;
+            fileNameEl.textContent = file.name;
+            fileSizeEl.textContent = formatBytes(file.size);
+            fileInfoEl.classList.add('show');
+            resultBanner.classList.remove('show');
+            parsePreview(file);
+        }
+
+        function resetFile() {
+            selectedFile = null;
+            fileInput.value = '';
+            fileInfoEl.classList.remove('show');
+            previewSection.classList.remove('show');
+            actionBar.classList.remove('show');
+            previewBody.innerHTML = '';
+        }
+
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        // ── Preview with SheetJS ──
+        function parsePreview(file) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const wb = XLSX.read(e.target.result, { type: 'array' });
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+                    if (data.length < 2) {
+                        previewBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:2rem;">데이터가 없습니다.</td></tr>';
+                        previewSection.classList.add('show');
+                        actionBar.classList.remove('show');
+                        return;
+                    }
+
+                    const rows = data.slice(1).filter(r => r.length > 0 && r[0]);
+                    previewCount.textContent = rows.length + '건';
+
+                    previewBody.innerHTML = rows.map((r, i) => `
+                        <tr>
+                            <td style="color:var(--text-muted);">${i + 1}</td>
+                            <td><span class="cell-code">${r[0] ?? ''}</span></td>
+                            <td>${r[1] ?? ''}</td>
+                            <td>${r[2] ?? ''}</td>
+                            <td>${r[3] ?? ''}</td>
+                            <td>${r[4] ?? ''}</td>
+                            <td class="cell-qty">${r[5] != null ? Number(r[5]).toLocaleString() : ''}</td>
+                        </tr>
+                    `).join('');
+
+                    previewSection.classList.add('show');
+                    actionBar.classList.add('show');
+                } catch (err) {
+                    alert('파일 파싱 중 오류: ' + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // ── Upload ──
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            uploadBtn.disabled = true;
+            loadingOverlay.classList.add('show');
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const res = await fetch('/api/usage/upload', { method: 'POST', body: formData });
+                const result = await res.json();
+
+                loadingOverlay.classList.remove('show');
+                resultBanner.classList.add('show');
+
+                if (result.status === 'success') {
+                    resultBanner.className = 'result-banner show success';
+                    resultSummary.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${result.success_count}건 업로드 성공` +
+                        (result.error_count > 0 ? `, ${result.error_count}건 오류` : '');
+
+                    if (result.errors && result.errors.length > 0) {
+                        resultErrors.innerHTML = result.errors.map(e => `<p>⚠ ${e}</p>`).join('');
+                    } else {
+                        resultErrors.innerHTML = '';
+                    }
+
+                    resetFile();
+                    loadHistory();
+                } else {
+                    resultBanner.className = 'result-banner show error';
+                    resultSummary.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${result.message}`;
+                    resultErrors.innerHTML = '';
+                }
+            } catch (err) {
+                loadingOverlay.classList.remove('show');
+                resultBanner.className = 'result-banner show error';
+                resultBanner.classList.add('show');
+                resultSummary.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> 서버 연결 오류`;
+                resultErrors.innerHTML = '';
+            }
+
+            uploadBtn.disabled = false;
+        });
+
+        // ── Recent History ──
+        async function loadHistory() {
+            historyBody.innerHTML = '<tr><td colspan="7" class="empty-history"><i class="fa-solid fa-circle-notch fa-spin"></i> 불러오는 중...</td></tr>';
+
+            try {
+                const res = await fetch('/api/usage/recent');
+                const result = await res.json();
+
+                if (result.status === 'success' && result.data.length > 0) {
+                    historyBody.innerHTML = result.data.map(r => `
+                        <tr>
+                            <td style="color:var(--text-muted);">${r.id}</td>
+                            <td><span class="cell-code">${r.item_code ?? ''}</span></td>
+                            <td>${r.product_name ?? ''}</td>
+                            <td>${r.lot_no ?? ''}</td>
+                            <td>${r.transaction_date ?? ''}</td>
+                            <td>${r.purpose ?? ''}</td>
+                            <td class="cell-qty">${r.quantity != null ? Number(r.quantity).toLocaleString() : ''}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    historyBody.innerHTML = '<tr><td colspan="7" class="empty-history"><i class="fa-solid fa-box-open"></i> 출고 이력이 없습니다.</td></tr>';
+                }
+            } catch {
+                historyBody.innerHTML = '<tr><td colspan="7" class="empty-history"><i class="fa-solid fa-triangle-exclamation"></i> 데이터를 불러올 수 없습니다.</td></tr>';
+            }
+        }
+
+        document.getElementById('refresh-history').addEventListener('click', loadHistory);
+        loadHistory();
+    </script>
+</body>
+
+</html>
