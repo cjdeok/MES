@@ -14,14 +14,21 @@ SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
 app = Flask(__name__)
 
-# 파일 경로 스키마 정의
-BASE_DIR = r'c:\Users\ENS-1000\Documents\Antigravity\MES'
+# 파일 경로 스키마 정의 (Vercel Serverless 호환되도록 동적 경로 사용)
+# Vercel에서는 /var/task 등 동적 디렉토리에서 실행되므로 __file__ 기반 절대경로 추출이 필수
+if os.environ.get('VERCEL'):
+    # Vercel 환경: api 폴더에서 실행될 경우 프로젝트 루트 지정 등 필요 시 조정
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+else:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# 템플릿 검색 경로 설정
+# 템플릿 검색 경로 설정 (루트 및 web/templates 동시 탐색)
 app.jinja_loader = ChoiceLoader([
     FileSystemLoader(BASE_DIR),
-    FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates'))
+    FileSystemLoader(os.path.join(BASE_DIR, 'web', 'templates'))
 ])
+
+# 서버리스에서는 /tmp 디렉토리만 쓰기가 가능하지만, 여기선 단순 읽기 목적이므로 프로젝트 내 파일 참조
 JSON_FILE = os.path.join(BASE_DIR, '.tmp', 'material_master.json')
 THRESHOLD_FILE = os.path.join(BASE_DIR, '.tmp', 'inventory_thresholds.json')
 
