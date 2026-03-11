@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MES 통합 관리 시스템 - 완제품관리</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* ─── Top Header ─── */
+        .top-header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 64px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            box-sizing: border-box;
+            z-index: 100;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            text-decoration: none;
+        }
+
+        .header-brand i { font-size: 1.2rem; color: #3b82f6; }
+        .header-brand span { 
+            font-size: 1rem; font-weight: 700; color: #fff; letter-spacing: -0.01em; 
+        }
+
+        .header-nav { display: flex; align-items: center; gap: 0.5rem; }
+
+        .nav-btn {
+            display: flex; align-items: center; gap: 0.5rem;
+            text-decoration: none; color: #94a3b8;
+            padding: 0.5rem 0.95rem; border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.2s;
+            font-size: 0.875rem; font-weight: 500; white-space: nowrap;
+        }
+
+        .nav-btn i { color: #3b82f6; }
+        
+        .nav-btn:hover, .nav-btn.active {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.4);
+            color: white; transform: translateY(-1px);
+        }
+
+        /* ─── Main Content ─── */
+        .main-content {
+            padding: 2rem 2.5rem;
+            padding-top: calc(64px + 2rem);
+            min-height: 100vh;
+            box-sizing: border-box;
+            display: flex; flex-direction: column;
+        }
+
+        .page-title { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.4rem; }
+        .page-subtitle { color: #94a3b8; font-size: 0.95rem; margin-bottom: 2rem; }
+
+        /* ─── Table Panel ─── */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            display: flex; flex-direction: column;
+            flex: 1;
+        }
+
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1.2rem;
+        }
+        
+        .panel-header h2 {
+            font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 0.6rem; margin: 0;
+        }
+        
+        .panel-header h2 i { color: #3b82f6; }
+
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #94a3b8; padding: 0.4rem 0.9rem;
+            border-radius: 8px; font-size: 0.85rem; cursor: pointer;
+            transition: all 0.2s; display: flex; align-items: center; gap: 0.4rem;
+        }
+        
+        .refresh-btn:hover { background: rgba(59, 130, 246, 0.15); color: white; }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(15, 23, 42, 0.4);
+            flex: 1;
+        }
+
+        table {
+            width: 100%; border-collapse: collapse; min-width: 800px;
+        }
+
+        th, td {
+            padding: 1rem 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.02);
+            font-size: 0.85rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;
+            position: sticky; top: 0; backdrop-filter: blur(10px);
+        }
+
+        tr:hover td { background: rgba(255, 255, 255, 0.03); }
+
+        .td-code { font-family: monospace; color: #60a5fa; font-weight: 600; font-size: 0.9rem;}
+        .td-name { font-weight: 500; }
+        .td-lot { font-family: monospace; background: rgba(255,255,255,0.08); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.85rem;}
+        .td-number { font-weight: 600; font-size: 1rem; text-align: right; }
+        
+        .stock-pos { color: #10b981; }
+        .stock-zero { color: #64748b; }
+        .stock-neg { color: #ef4444; }
+
+        .unit-label { font-size: 0.75rem; color: #94a3b8; font-weight: 400; margin-left: 2px; }
+
+        #loading {
+            text-align: center; padding: 3rem; color: #94a3b8; font-size: 1rem;
+        }
+
+        /* ─── Modal ─── */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            display: none; justify-content: center; align-items: center;
+            z-index: 1000;
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .modal-overlay.show { display: flex; opacity: 1; }
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            width: 90%; max-width: 800px; max-height: 85vh;
+            display: flex; flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            transform: translateY(20px); transition: transform 0.2s;
+        }
+        .modal-overlay.show .modal-content { transform: translateY(0); }
+        .modal-header {
+            padding: 1.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(15, 23, 42, 0.4); border-radius: 12px 12px 0 0;
+        }
+        .modal-header h3 { margin: 0; font-size: 1.2rem; color: #fff; display: flex; align-items: center; gap: 0.6rem; }
+        .modal-header h3 i { color: #3b82f6; }
+        .modal-close {
+            background: transparent; border: none; color: #94a3b8;
+            font-size: 1.25rem; cursor: pointer; transition: color 0.2s;
+        }
+        .modal-close:hover { color: #fff; }
+        .modal-body {
+            padding: 1.5rem; overflow-y: auto; flex: 1;
+        }
+        .modal-table { width: 100%; border-collapse: collapse; }
+        .modal-table th, .modal-table td {
+            padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.85rem;
+        }
+        .modal-table th { color: #94a3b8; font-weight: 600; background: rgba(255, 255, 255, 0.02); position: sticky; top: 0; }
+        .type-in { color: #10b981; font-weight: 600; }
+        .type-out { color: #f43f5e; font-weight: 600; }
+        
+        .clickable-row { cursor: pointer; transition: background 0.15s; }
+        .clickable-row:hover td { background: rgba(59, 130, 246, 0.1); }
+
+        /* ─── Dashboard ─── */
+        .dashboard-container {
+            display: flex; gap: 1.5rem; margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        .filter-panel {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px; padding: 1.5rem;
+            display: flex; flex-direction: column; gap: 1rem;
+            min-width: 280px; flex: 1;
+        }
+        .filter-panel h3 { margin: 0; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem; color: #fff;}
+        .filter-panel h3 i { color: #3b82f6;}
+        
+        .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+        .form-group label { font-size: 0.85rem; color: #94a3b8; font-weight: 500; }
+        .form-select {
+            background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1);
+            color: #fff; padding: 0.6rem 1rem; border-radius: 8px;
+            font-size: 0.9rem; outline: none; transition: border-color 0.2s;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 1rem center;
+        }
+        .form-select:focus { border-color: #3b82f6; }
+        .form-select option { background: #1e293b; color: #fff;}
+
+        .stat-cards {
+            display: flex; gap: 1.5rem; flex: 2; min-width: 500px;
+        }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px; padding: 1.5rem; flex: 1;
+            display: flex; flex-direction: column; justify-content: center;
+            position: relative; overflow: hidden;
+        }
+        .stat-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+        }
+        .stat-card.in::before { background: #10b981; }
+        .stat-card.out::before { background: #f43f5e; }
+        
+        .stat-title { font-size: 0.9rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;}
+        .stat-value { font-size: 2.2rem; font-weight: 700; color: #fff; line-height: 1; }
+        .stat-unit { font-size: 1rem; font-weight: 400; color: #94a3b8; margin-left: 0.3rem;}
+
+
+    </style>
+</head>
+
+<body>
+    <!-- Top Header Navigation -->
+    <header class="top-header">
+        <a href="/" class="header-brand">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>MES 통합 관리 시스템</span>
+        </a>
+        <nav class="header-nav">
+            <a href="/material-info" class="nav-btn">
+                <i class="fa-solid fa-list-check"></i>
+                안전재고
+            </a>
+            <a href="/inventory" class="nav-btn">
+                <i class="fa-solid fa-boxes-stacked"></i>
+                재고 모니터링
+            </a>
+            <a href="/producible" class="nav-btn">
+                <i class="fa-solid fa-flask-vial"></i>
+                생산가능수량
+            </a>
+            <a href="/production" class="nav-btn">
+                <i class="fa-solid fa-industry"></i>
+                생산 관리
+            </a>
+            <a href="/finished-product" class="nav-btn active">
+                <i class="fa-solid fa-box-open"></i>
+                완제품관리
+            </a>
+            <a href="/upload-usage" class="nav-btn">
+                <i class="fa-solid fa-file-arrow-up"></i>
+                사용량 업로드
+            </a>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <h1 class="page-title">
+            <i class="fa-solid fa-box-open" style="color:#3b82f6; margin-right: 0.5rem;"></i>
+            완제품 관리
+        </h1>
+        <p class="page-subtitle">완제품 Lot 별 총 입고량, 출고량 및 통계 현황을 모니터링합니다.</p>
+
+        <div class="glass-panel">
+            <div class="panel-header">
+                <h2><i class="fa-solid fa-clipboard-list"></i> 완제품 Lot별 재고 상세내역</h2>
+                <div style="display: flex; gap: 0.8rem;">
+                    <button class="refresh-btn" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.4); color: white;" onclick="openStatsModal()">
+                        <i class="fa-solid fa-chart-column"></i> 통계 대시보드
+                    </button>
+                    <button class="refresh-btn" id="refresh-btn" onclick="fetchInventory()">
+                        <i class="fa-solid fa-rotate-right"></i> 새로고침
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>제품코드</th>
+                            <th>제품명</th>
+                            <th>Lot No.</th>
+                            <th>제조일자</th>
+                            <th style="text-align: right;">입고 합계</th>
+                            <th style="text-align: right;">출고 합계</th>
+                            <th style="text-align: right;">현재 재고</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-tbody">
+                        <tr><td colspan="7" id="loading"><i class="fa-solid fa-circle-notch fa-spin"></i> 데이터를 불러오는 중입니다...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchInventory() {
+            const tbody = document.getElementById('inventory-tbody');
+            tbody.innerHTML = '<tr><td colspan="7" id="loading"><i class="fa-solid fa-circle-notch fa-spin"></i> 데이터를 불러오는 중입니다...</td></tr>';
+            
+            try {
+                const response = await fetch('/api/finished-product/inventory');
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    tbody.innerHTML = '';
+                    if (result.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem; color: #94a3b8;">데이터가 없습니다.</td></tr>';
+                        return;
+                    }
+
+                    result.data.forEach(item => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'clickable-row';
+                        tr.onclick = () => openLotModal(item.lot_no, item.product_name);
+                        const stockClass = item.current_stock > 0 ? 'stock-pos' : (item.current_stock < 0 ? 'stock-neg' : 'stock-zero');
+                        
+                        tr.innerHTML = `
+                            <td class="td-code">${item.product_code || '-'}</td>
+                            <td class="td-name">${item.product_name || '-'}</td>
+                            <td><span class="td-lot">${item.lot_no || '-'}</span></td>
+                            <td style="color: #cbd5e1;">${item.manufacture_date || '-'}</td>
+                            <td class="td-number">${item.total_in.toLocaleString()} <span class="unit-label">Kit</span></td>
+                            <td class="td-number" style="color:#f43f5e;">${item.total_out.toLocaleString()} <span class="unit-label">Kit</span></td>
+                            <td class="td-number ${stockClass}">${item.current_stock.toLocaleString()} <span class="unit-label">Kit</span></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2rem; color: #ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> 에러 발생: ${err.message}</td></tr>`;
+            }
+        }
+
+        // --- 대시보드 통계 연동 ---
+        let myChart = null;
+
+        async function fetchStatistics() {
+            const year = document.getElementById('filter-year').value;
+            const product = document.getElementById('filter-product').value;
+            
+            const elIn = document.getElementById('stat-total-in');
+            const elOut = document.getElementById('stat-total-out');
+            
+            elIn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:1.5rem;"></i>';
+            elOut.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:1.5rem;"></i>';
+            
+            try {
+                const res = await fetch(`/api/finished-product/statistics?year=${year}&product_code=${product}`);
+                const result = await res.json();
+                if (result.status === 'success') {
+                    const data = result.data;
+                    const inVal = data.total_in || 0;
+                    const outVal = data.total_out || 0;
+                    
+                    elIn.innerHTML = `${inVal.toLocaleString()} <span class="stat-unit">Kit</span>`;
+                    elOut.innerHTML = `${outVal.toLocaleString()} <span class="stat-unit">Kit</span>`;
+                    
+                    // 차트 업데이트
+                    if(myChart) {
+                        myChart.data.datasets[0].data = [inVal, outVal];
+                        myChart.update();
+                    }
+                } else {
+                    console.error('Stats Error:', result.message);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function initDashboardForm() {
+            // 연도 셀렉트 박스 채우기 (2020년부터 올해+1)
+            const yearSelect = document.getElementById('filter-year');
+            yearSelect.innerHTML = '<option value="all">전체 연도</option>'; // 초기화
+            const currentYear = new Date().getFullYear();
+            for (let y = currentYear + 1; y >= 2020; y--) {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = `${y}년`;
+                yearSelect.appendChild(opt);
+            }
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('inventoryChart').getContext('2d');
+            if(myChart) { myChart.destroy(); }
+            
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['총 입고량', '총 출고량'],
+                    datasets: [{
+                        label: '수량 (Kit)',
+                        data: [0, 0],
+                        backgroundColor: [
+                            'rgba(16, 185, 129, 0.8)', // 입고 녹색
+                            'rgba(244, 63, 94, 0.8)'   // 출고 빨간색
+                        ],
+                        borderColor: [
+                            '#10b981',
+                            '#f43f5e'
+                        ],
+                        borderWidth: 1,
+                        barPercentage: 0.6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y.toLocaleString() + ' Kit';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function openStatsModal() {
+            const modal = document.getElementById('stats-modal');
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => modal.classList.add('show'));
+            
+            initDashboardForm();
+            initChart();
+            fetchStatistics();
+        }
+
+        function closeStatsModal() {
+            const modal = document.getElementById('stats-modal');
+            modal.classList.remove('show');
+            setTimeout(() => { modal.style.display = 'none'; }, 200);
+        }
+
+        // 페이지 로드 시 즉시 데이터 호출
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchInventory();
+        });
+
+        // 모달 로직 (동적 접근)
+        function getModal() {
+            return document.getElementById('lot-modal');
+        }
+        
+        function closeLotModal() {
+            const modal = getModal();
+            if(!modal) return;
+            modal.classList.remove('show');
+            setTimeout(() => { modal.style.display = 'none'; }, 200);
+        }
+
+        async function openLotModal(lotNo, productName) {
+            const modal = getModal();
+            if(!modal) return;
+            document.getElementById('modal-lot-title').innerText = `[${lotNo}] 입출고 상세 내역`;
+            const tbody = document.getElementById('modal-tbody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem; color: #94a3b8;"><i class="fa-solid fa-circle-notch fa-spin"></i> 로딩 중...</td></tr>';
+            
+            modal.style.display = 'flex';
+            // 약간의 딜레이로 transition 효과 부여
+            requestAnimationFrame(() => {
+                modal.classList.add('show');
+            });
+
+            try {
+                const res = await fetch('/api/finished-product/lot/' + encodeURIComponent(lotNo));
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    tbody.innerHTML = '';
+                    if (result.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem; color: #94a3b8;">상세 내역이 없습니다.</td></tr>';
+                        return;
+                    }
+
+                    result.data.forEach(item => {
+                        const tr = document.createElement('tr');
+                        const isOut = item.transaction_type.includes('출고');
+                        const typeClass = isOut ? 'type-out' : 'type-in';
+                        
+                        tr.innerHTML = `
+                            <td class="${typeClass}">${item.transaction_type}</td>
+                            <td style="color:#cbd5e1;">${item.transaction_date || '-'}</td>
+                            <td style="text-align:right; font-weight:600;">${(item.quantity_kit || 0).toLocaleString()} <span style="font-size:0.75rem;color:#94a3b8;font-weight:400;">Kit</span></td>
+                            <td>${item.destination || '-'}</td>
+                            <td>${item.qc_info || '-'}</td>
+                            <td style="color:#94a3b8;">${item.remark || '-'}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 2rem; color: #ef4444;">에러 발생: ${err.message}</td></tr>`;
+            }
+        }
+    </script>
+
+    <!-- Modal HTML for Log Details -->
+    <div id="lot-modal" class="modal-overlay" onclick="if(event.target===this) closeLotModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-clock-rotate-left"></i> <span id="modal-lot-title">Lot 상세 내역</span></h3>
+                <button class="modal-close" onclick="closeLotModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <table class="modal-table">
+                    <thead>
+                        <tr>
+                            <th>구분</th>
+                            <th>발생일자</th>
+                            <th style="text-align:right;">수량(Kit)</th>
+                            <th>출고처</th>
+                            <th>QC 정보</th>
+                            <th>비고</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-tbody">
+                        <!-- 동적 삽입 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal HTML for 통계 대시보드 -->
+    <div id="stats-modal" class="modal-overlay" onclick="if(event.target===this) closeStatsModal()">
+        <div class="modal-content" style="max-width: 900px; width: 95%;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-chart-column"></i> 통계 대시보드</h3>
+                <button class="modal-close" onclick="closeStatsModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="display:flex; flex-direction:column; gap:1.5rem;">
+                
+                <!-- 필터 영역 -->
+                <div class="filter-panel" style="flex:unset;">
+                    <h3><i class="fa-solid fa-filter"></i> 조회 조건 설정</h3>
+                    <div style="display: flex; gap: 1rem;">
+                        <div class="form-group" style="flex:1;">
+                            <label for="filter-year">제조 연도</label>
+                            <select id="filter-year" class="form-select" onchange="fetchStatistics()">
+                                <option value="all">전체 연도</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label for="filter-product">제품 코드</label>
+                            <select id="filter-product" class="form-select" onchange="fetchStatistics()">
+                                <option value="all">전체 코드</option>
+                                <option value="BCE01">BCE01</option>
+                                <option value="BCE02">BCE02</option>
+                                <option value="BCE03">BCE03</option>
+                                <option value="BCE04">BCE04</option>
+                                <option value="BCEPP">BCEPP</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 카드 & 차트 영역 -->
+                <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+                    <div class="stat-cards" style="flex-direction: column; min-width:unset; flex:1;">
+                        <div class="stat-card in" style="flex:1;">
+                            <div class="stat-title"><i class="fa-solid fa-arrow-right-to-bracket" style="color:#10b981;"></i> 총 입고량</div>
+                            <div class="stat-value" id="stat-total-in"><i class="fa-solid fa-circle-notch fa-spin" style="font-size:1.5rem;"></i></div>
+                        </div>
+                        <div class="stat-card out" style="flex:1;">
+                            <div class="stat-title"><i class="fa-solid fa-arrow-right-from-bracket" style="color:#f43f5e;"></i> 총 출고량</div>
+                            <div class="stat-value" id="stat-total-out"><i class="fa-solid fa-circle-notch fa-spin" style="font-size:1.5rem;"></i></div>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-panel" style="flex: 2; height: 300px;">
+                        <canvas id="inventoryChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</body>
+</html>

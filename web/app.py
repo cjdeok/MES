@@ -49,6 +49,10 @@ def material_info():
 def upload_usage():
     return render_template('upload_usage.html')
 
+@app.route('/finished-product')
+def finished_product():
+    return render_template('finished_product.html')
+
 @app.route('/api/producible')
 def get_producible():
     """현 재고량 기준 원료별 최대 생산가능 kit수 계산"""
@@ -469,6 +473,111 @@ def get_recent_usage():
         conn.close()
         return jsonify({'status': 'success', 'data': rows})
     except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/finished-product/inventory')
+def get_finished_product_inventory():
+    """완제품 Lot별 재고 조회 API"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT product_code,
+                   product_name,
+                   lot_no,
+                   MIN(CASE WHEN transaction_type = '완제품입고' THEN transaction_date END) as manufacture_date,
+                   SUM(CASE WHEN transaction_type = '완제품입고' THEN quantity_kit ELSE 0 END) as total_in,
+                   SUM(CASE WHEN transaction_type = '완제품 출고' THEN quantity_kit ELSE 0 END) as total_out
+            FROM finished_products
+            GROUP BY product_code, product_name, lot_no
+            ORDER BY manufacture_date ASC, product_code ASC, lot_no ASC
+        ''')
+        rows = []
+        for row in cursor.fetchall():
+            d = dict(row)
+            d['current_stock'] = (d['total_in'] or 0) - (d['total_out'] or 0)
+            rows.append(d)
+        conn.close()
+        return jsonify({'status': 'success', 'data': rows})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/finished-product/lot/<path:lot_no>')
+def get_finished_product_lot_details(lot_no):
+    """특정 완제품 Lot의 입출고 상세 내역 조회 API"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT transaction_type,
+                   transaction_date,
+                   quantity_kit,
+                   destination,
+                   qc_info,
+                   remark
+            FROM finished_products
+            WHERE lot_no = ?
+            ORDER BY transaction_date ASC, id ASC
+        ''', (lot_no,))
+        rows = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return jsonify({'status': 'success', 'data': rows})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/finished-product/statistics')
+def get_finished_product_statistics():
+    """연도별/제품코드별 입출고 통계 API"""
+    year = request.args.get('year')
+    product_code = request.args.get('product_code')
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 기본 쿼리: 각 로트별로 첫 번째 '완제품입고' 날짜를 제조일자로 간주하여 연도를 추출합니다.
+        # 동일한 로트 안에서 일어난 모든 입/출고 수량을 집계합니다.
+        query = '''
+            WITH LotManufacture AS (
+                SELECT lot_no,
+                       product_code,
+                       MIN(CASE WHEN transaction_type = '완제품입고' THEN transaction_date END) as mfg_date
+                FROM finished_products
+                GROUP BY lot_no, product_code
+            )
+            SELECT
+                SUM(CASE WHEN f.transaction_type = '완제품입고' THEN f.quantity_kit ELSE 0 END) as total_in,
+                SUM(CASE WHEN f.transaction_type = '완제품 출고' THEN f.quantity_kit ELSE 0 END) as total_out
+            FROM finished_products f
+            JOIN LotManufacture lm ON f.lot_no = lm.lot_no AND f.product_code = lm.product_code
+            WHERE 1=1
+        '''
+        params = []
+        
+        if year and year != 'all':
+            query += " AND SUBSTR(lm.mfg_date, 1, 4) = ?"
+            params.append(year)
+            
+        if product_code and product_code != 'all':
+            query += " AND f.product_code = ?"
+            params.append(product_code)
+            
+        cursor.execute(query, params)
+        row = cursor.fetchone()
+        
+        stats = {
+            'total_in': row['total_in'] if row['total_in'] else 0,
+            'total_out': row['total_out'] if row['total_out'] else 0
+        }
+        
+        conn.close()
+        return jsonify({'status': 'success', 'data': stats})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
