@@ -319,11 +319,14 @@ def calculate_production():
         res_bom = sb.table('kit_bom').select('material_code, material_name, usage_qty').eq('kit_qty', kit_qty).execute()
         bom_items = res_bom.data
 
-        # 2. 모든 material_info (rec_date용)
-        res_info = sb.table('material_info').select('item_code, lot_no, receive_date').execute()
+        # 2. 모든 material_info (rec_date, expire_date용)
+        res_info = sb.table('material_info').select('item_code, lot_no, receive_date, expire_date').execute()
         info_map = {}
         for r in res_info.data:
-            info_map[(r['item_code'], r['lot_no'])] = r['receive_date']
+            info_map[(r['item_code'], r['lot_no'])] = {
+                'receive_date': r['receive_date'],
+                'expire_date': r['expire_date']
+            }
 
         # 3. 모든 raw_materials 재고 조회 (각 lot 별 잔량 계산)
         codes = [item['material_code'] for item in bom_items]
@@ -347,15 +350,18 @@ def calculate_production():
             available_lots = []
             for (itm_cd, lot_no), stock in lot_stocks.items():
                 if itm_cd == mat_code and stock > 0:
-                    rec_date = info_map.get((itm_cd, lot_no), '9999-12-31')
+                    info = info_map.get((itm_cd, lot_no), {})
+                    rec_date = info.get('receive_date') or '9999-12-31'
+                    exp_date = info.get('expire_date') or '9999-12-31'
                     available_lots.append({
                         'lot_no': lot_no,
                         'current_stock': stock,
-                        'rec_date': rec_date if rec_date else '9999-12-31'
+                        'rec_date': rec_date,
+                        'exp_date': exp_date
                     })
             
-            # 입고일 빠른 순 정렬
-            available_lots.sort(key=lambda x: (x['rec_date'], x['lot_no']))
+            # 유효기간 빠른 순 -> 입고일 빠른 순 정렬
+            available_lots.sort(key=lambda x: (x['exp_date'], x['rec_date'], x['lot_no']))
 
             allocated_lots = []
             remaining_to_allocate = required_qty
