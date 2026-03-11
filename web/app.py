@@ -1,29 +1,34 @@
 import os
 import io
 import json
-import sqlite3
 import openpyxl
+from collections import defaultdict
 from flask import Flask, render_template, jsonify, request
 from jinja2 import ChoiceLoader, FileSystemLoader
+from dotenv import load_dotenv
+from supabase import create_client, Client
+
+load_dotenv()
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
 app = Flask(__name__)
 
 # 파일 경로 스키마 정의
 BASE_DIR = r'c:\Users\ENS-1000\Documents\Antigravity\MES'
 
-# 템플릿 검색 경로 설정: 루트(index.html) → web/templates(나머지 페이지) 순서로 탐색
+# 템플릿 검색 경로 설정
 app.jinja_loader = ChoiceLoader([
     FileSystemLoader(BASE_DIR),
     FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates'))
 ])
 JSON_FILE = os.path.join(BASE_DIR, '.tmp', 'material_master.json')
 THRESHOLD_FILE = os.path.join(BASE_DIR, '.tmp', 'inventory_thresholds.json')
-DB_FILE = os.path.join(BASE_DIR, 'mes_database.db')
 
-def get_db_connection():
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    return conn
+def get_supabase_client() -> Client:
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        raise Exception("Supabase 환경 변수가 설정되지 않았습니다.")
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 @app.route('/')
 def index():
@@ -57,18 +62,16 @@ def finished_product():
 def get_producible():
     """현 재고량 기준 원료별 최대 생산가능 kit수 계산"""
     try:
-        import openpyxl, bisect
+        import bisect
 
         # ── 1. BOM.xlsx 파싱 ──────────────────────────────────────
         BOM_FILE = os.path.join(BASE_DIR, '.tmp', 'BOM.xlsx')
         wb = openpyxl.load_workbook(BOM_FILE, read_only=True, data_only=True)
         ws = wb.active
 
-        # 헤더 행: [코드, 품명, 1kit, 2kit, ..., 256kit]
         header = [cell for cell in next(ws.iter_rows(min_row=1, max_row=1, values_only=True))]
         kit_cols = len(header) - 2  # 256
 
-        # bom[item_code] = [소요량(1kit), 소요량(2kit), ..., 소요량(256kit)]
         bom = {}
         bom_name = {}
         for row in ws.iter_rows(min_row=2, values_only=True):
@@ -81,7 +84,7 @@ def get_producible():
             bom_name[code] = name
         wb.close()
 
-        # ── 2. 현재고 조회 ────────────────────────────────────────
+        # ── 2. 단위 매핑 ────────────────────────────────────────
         unit_map = {}
         try:
             with open(JSON_FILE, 'r', encoding='utf-8') as f:
@@ -90,30 +93,32 @@ def get_producible():
         except Exception:
             pass
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT item_code,
-                   MAX(product_name) as product_name,
-                   SUM(CASE WHEN transaction_type = '입고' THEN quantity ELSE -quantity END) as total_stock
-            FROM raw_materials
-            GROUP BY item_code
-        ''')
-        stock_rows = {row['item_code']: dict(row) for row in cursor.fetchall()}
-        conn.close()
+        # ── 3. DB 현재고 조회 (Supabase) ─────────────────────────
+        sb = get_supabase_client()
+        # 모든 raw_materials 가져오기
+        res = sb.table('raw_materials').select('item_code, product_name, transaction_type, quantity').execute()
+        
+        stock_map = defaultdict(lambda: {'product_name': '', 'total_stock': 0.0})
+        for r in res.data:
+            code = r['item_code']
+            qty = r['quantity'] or 0
+            if r['transaction_type'] == '입고':
+                stock_map[code]['total_stock'] += qty
+            else:
+                stock_map[code]['total_stock'] -= qty
+            if r.get('product_name'):
+                stock_map[code]['product_name'] = r['product_name']
 
-        # ── 3. 원료별 최대 생산가능 kit수 계산 ───────────────────
+        # ── 4. 계산 ───────────────────
         results = []
         for code, usages in bom.items():
-            stock_info = stock_rows.get(code, {})
-            current_stock = stock_info.get('total_stock') or 0
+            stock_info = stock_map.get(code, {})
+            current_stock = stock_info.get('total_stock', 0)
             product_name = stock_info.get('product_name') or bom_name.get(code, '')
 
-            # 소요량 배열 기준 이진탐색: usages[i] <= current_stock 인 최대 i+1
             max_kit = 0
             for i, usage in enumerate(usages):
                 if usage is None or usage == 0:
-                    # 소요량 0 → 무제한 취급 (kit_cols 전체 가능)
                     max_kit = kit_cols
                 elif current_stock >= usage:
                     max_kit = i + 1
@@ -128,7 +133,6 @@ def get_producible():
                 'max_kit': max_kit,
             })
 
-        # 코드 순 정렬
         results.sort(key=lambda x: x['item_code'])
         return jsonify({'status': 'success', 'data': results})
     except Exception as e:
@@ -148,7 +152,6 @@ def get_materials():
                 'name': details.get('제품명', 'Unknown')
             })
             
-        # 코드 순으로 정렬
         materials = sorted(materials, key=lambda x: x['code'])
         return jsonify({'status': 'success', 'data': materials})
     except Exception as e:
@@ -156,29 +159,17 @@ def get_materials():
 
 @app.route('/api/lots/<item_code>')
 def get_lots(item_code):
-    """SQLite DB에서 특정 품목 코드에 대한 Lot 번호 목록을 가져옵니다."""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # 품목 코드에 해당하는 고유한 Lot 번호 조회
-        cursor.execute('''
-            SELECT DISTINCT lot_no 
-            FROM raw_materials 
-            WHERE item_code = ?
-            ORDER BY lot_no
-        ''', (item_code,))
-        
-        lots = [row['lot_no'] for row in cursor.fetchall() if row['lot_no']]
-        conn.close()
-        
+        sb = get_supabase_client()
+        res = sb.table('raw_materials').select('lot_no').eq('item_code', item_code).execute()
+        lots = list(set([r['lot_no'] for r in res.data if r.get('lot_no')]))
+        lots.sort()
         return jsonify({'status': 'success', 'data': lots})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/inventory')
 def get_inventory():
-    """특정 원료코드와 Lot 번호의 이력 및 요약 데이터를 가져옵니다."""
     item_code = request.args.get('item_code')
     lot_no = request.args.get('lot_no')
     
@@ -186,36 +177,18 @@ def get_inventory():
         return jsonify({'status': 'error', 'message': 'Missing item_code or lot_no'}), 400
         
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        sb = get_supabase_client()
+        # 이력 조회
+        res_hist = sb.table('raw_materials').select('id, product_name, transaction_type, transaction_date, purpose, quantity').eq('item_code', item_code).eq('lot_no', lot_no).order('transaction_date').order('id').execute()
+        history = res_hist.data
         
-        # 상세 히스토리 조회
-        cursor.execute('''
-            SELECT id, product_name, transaction_type, transaction_date, purpose, quantity 
-            FROM raw_materials 
-            WHERE item_code = ? AND lot_no = ?
-            ORDER BY transaction_date ASC, id ASC
-        ''', (item_code, lot_no))
+        # 원료 상세 조회
+        res_info = sb.table('material_info').select('receive_date, qc_date, expire_date').eq('item_code', item_code).eq('lot_no', lot_no).limit(1).execute()
+        material_details = res_info.data[0] if res_info.data else None
         
-        history = [dict(row) for row in cursor.fetchall()]
-        
-        # 원료 상세 정보 조회 (입고일, QC일, 유효기간)
-        cursor.execute('''
-            SELECT receive_date, qc_date, expire_date
-            FROM material_info
-            WHERE item_code = ? AND lot_no = ?
-            LIMIT 1
-        ''', (item_code, lot_no))
-        
-        detail_row = cursor.fetchone()
-        material_details = dict(detail_row) if detail_row else None
-        
-        # 요약 정보 계산
         total_in = sum(item['quantity'] for item in history if item['transaction_type'] == '입고')
         total_out = sum(item['quantity'] for item in history if item['transaction_type'] == '출고')
         current_stock = total_in - total_out
-        
-        conn.close()
         
         summary = {
             'total_in': total_in,
@@ -234,9 +207,7 @@ def get_inventory():
 
 @app.route('/api/stock/summary')
 def get_stock_summary():
-    """원료별 총 재고량 요약 (원료코드, 원료명, 단위, 총 재고)"""
     try:
-        # material_master.json에서 단위 정보 로드
         unit_map = {}
         try:
             with open(JSON_FILE, 'r', encoding='utf-8') as f:
@@ -245,36 +216,40 @@ def get_stock_summary():
         except Exception:
             pass
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT item_code,
-                   MAX(product_name) as product_name,
-                   SUM(CASE WHEN transaction_type = '입고' THEN quantity ELSE -quantity END) as total_stock
-            FROM raw_materials
-            GROUP BY item_code
-            ORDER BY item_code
-        ''')
-        rows = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+        sb = get_supabase_client()
+        res = sb.table('raw_materials').select('item_code, product_name, transaction_type, quantity').execute()
+        
+        stats = defaultdict(lambda: {'product_name': '', 'total_in': 0.0, 'total_out': 0.0})
+        for r in res.data:
+            code = r['item_code']
+            qty = r['quantity'] or 0
+            if r['transaction_type'] == '입고':
+                stats[code]['total_in'] += qty
+            else:
+                stats[code]['total_out'] += qty
+            if r.get('product_name'):
+                stats[code]['product_name'] = r['product_name']
 
-        # 단위 정보 매핑
-        for row in rows:
-            row['unit'] = unit_map.get(row['item_code'], '')
-
+        rows = []
+        for code, data in stats.items():
+            rows.append({
+                'item_code': code,
+                'product_name': data['product_name'],
+                'total_stock': data['total_in'] - data['total_out'],
+                'unit': unit_map.get(code, '')
+            })
+            
+        rows.sort(key=lambda x: x['item_code'])
         return jsonify({'status': 'success', 'data': rows})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/material-info')
 def get_material_info():
-    """원료 마스터 + 안전재고 + 현재고를 결합하여 반환"""
     try:
-        # 1. material_master.json 로드
         with open(JSON_FILE, 'r', encoding='utf-8') as f:
             master = json.load(f)
 
-        # 2. inventory_thresholds.json 로드
         thresholds = {}
         try:
             with open(THRESHOLD_FILE, 'r', encoding='utf-8') as f:
@@ -282,23 +257,21 @@ def get_material_info():
         except Exception:
             pass
 
-        # 3. DB에서 현재고 조회
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT item_code,
-                   SUM(CASE WHEN transaction_type = '입고' THEN quantity ELSE -quantity END) as total_stock
-            FROM raw_materials
-            GROUP BY item_code
-        ''')
-        stock_map = {row['item_code']: row['total_stock'] or 0 for row in cursor.fetchall()}
-        conn.close()
+        sb = get_supabase_client()
+        res = sb.table('raw_materials').select('item_code, transaction_type, quantity').execute()
+        
+        stock_map = defaultdict(float)
+        for r in res.data:
+            qty = r['quantity'] or 0
+            if r['transaction_type'] == '입고':
+                stock_map[r['item_code']] += qty
+            else:
+                stock_map[r['item_code']] -= qty
 
-        # 4. 데이터 결합
         result = []
         for code, info in master.items():
             safe = thresholds.get(code, {}).get('safe_stock_level', None)
-            current = stock_map.get(code, 0)
+            current = stock_map.get(code, 0.0)
 
             result.append({
                 'item_code': code,
@@ -321,22 +294,33 @@ def get_material_info():
 
 @app.route('/api/production/calculate')
 def calculate_production():
-    """키트 생산 수량에 따른 원료 소요량 및 선입선출 할당 내역 계산"""
     kit_qty = request.args.get('kit_qty', type=int)
     if not kit_qty or kit_qty < 1 or kit_qty > 256:
         return jsonify({'status': 'error', 'message': 'Invalid kit quantity (1-256)'}), 400
         
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        sb = get_supabase_client()
+        # 1. BOM 소요량 조회
+        res_bom = sb.table('kit_bom').select('material_code, material_name, usage_qty').eq('kit_qty', kit_qty).execute()
+        bom_items = res_bom.data
+
+        # 2. 모든 material_info (rec_date용)
+        res_info = sb.table('material_info').select('item_code, lot_no, receive_date').execute()
+        info_map = {}
+        for r in res_info.data:
+            info_map[(r['item_code'], r['lot_no'])] = r['receive_date']
+
+        # 3. 모든 raw_materials 재고 조회 (각 lot 별 잔량 계산)
+        codes = [item['material_code'] for item in bom_items]
+        res_raw = sb.table('raw_materials').select('item_code, lot_no, transaction_type, quantity').in_('item_code', codes).execute()
         
-        # BOM 소요량 조회 (kit_qty에 해당하는 원료 리스트)
-        cursor.execute('''
-            SELECT material_code, material_name, usage_qty 
-            FROM kit_bom 
-            WHERE kit_qty = ?
-        ''', (kit_qty,))
-        bom_items = [dict(row) for row in cursor.fetchall()]
+        lot_stocks = defaultdict(float)
+        for r in res_raw.data:
+            key = (r['item_code'], r['lot_no'])
+            if r['transaction_type'] == '입고':
+                lot_stocks[key] += (r['quantity'] or 0)
+            else:
+                lot_stocks[key] -= (r['quantity'] or 0)
 
         results = []
         for item in bom_items:
@@ -344,20 +328,19 @@ def calculate_production():
             mat_name = item['material_name']
             required_qty = item['usage_qty']
 
-            # FIFO 가용 재고 조회 (각 lot 별 잔량 계산, 입고일 빠른 순 정렬)
-            cursor.execute('''
-                SELECT r.lot_no, 
-                       SUM(CASE WHEN r.transaction_type = '입고' THEN r.quantity ELSE -r.quantity END) as current_stock,
-                       IFNULL(m.receive_date, '9999-12-31') as rec_date
-                FROM raw_materials r
-                LEFT JOIN material_info m ON r.item_code = m.item_code AND r.lot_no = m.lot_no
-                WHERE r.item_code = ?
-                GROUP BY r.item_code, r.lot_no, rec_date
-                HAVING current_stock > 0
-                ORDER BY rec_date ASC, r.lot_no ASC
-            ''', (mat_code,))
+            # 가용 재고 목록 생성
+            available_lots = []
+            for (itm_cd, lot_no), stock in lot_stocks.items():
+                if itm_cd == mat_code and stock > 0:
+                    rec_date = info_map.get((itm_cd, lot_no), '9999-12-31')
+                    available_lots.append({
+                        'lot_no': lot_no,
+                        'current_stock': stock,
+                        'rec_date': rec_date if rec_date else '9999-12-31'
+                    })
             
-            available_lots = [dict(row) for row in cursor.fetchall()]
+            # 입고일 빠른 순 정렬
+            available_lots.sort(key=lambda x: (x['rec_date'], x['lot_no']))
 
             allocated_lots = []
             remaining_to_allocate = required_qty
@@ -387,14 +370,14 @@ def calculate_production():
                 'status': 'success' if shortage_qty == 0 else 'shortage'
             })
             
-        conn.close()
         return jsonify({'status': 'success', 'data': results})
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/usage/upload', methods=['POST'])
 def upload_usage_api():
-    """엑셀 파일로 원료 사용량(출고)을 일괄 업로드"""
     if 'file' not in request.files:
         return jsonify({'status': 'error', 'message': '파일이 첨부되지 않았습니다.'}), 400
 
@@ -406,16 +389,17 @@ def upload_usage_api():
         wb = openpyxl.load_workbook(io.BytesIO(file.read()), read_only=True, data_only=True)
         ws = wb.active
 
-        rows = list(ws.iter_rows(min_row=2, values_only=True))  # 헤더 제외
+        rows = list(ws.iter_rows(min_row=2, values_only=True))
         wb.close()
 
         if not rows:
             return jsonify({'status': 'error', 'message': '데이터가 없습니다. 2행부터 데이터를 입력해 주세요.'}), 400
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        sb = get_supabase_client()
         success_count = 0
         errors = []
+        
+        insert_data = []
 
         for idx, row in enumerate(rows, start=2):
             try:
@@ -434,17 +418,28 @@ def upload_usage_api():
                 if quantity <= 0:
                     errors.append(f'{idx}행: 사용량은 0보다 커야 합니다. (값: {quantity})')
                     continue
-
-                cursor.execute('''
-                    INSERT INTO raw_materials (product_name, item_code, lot_no, transaction_type, transaction_date, purpose, quantity)
-                    VALUES (?, ?, ?, '출고', ?, ?, ?)
-                ''', (product_name, item_code, lot_no, transaction_date, purpose, quantity))
-                success_count += 1
+                
+                insert_data.append({
+                    'product_name': product_name,
+                    'item_code': item_code,
+                    'lot_no': lot_no,
+                    'transaction_type': '출고',
+                    'transaction_date': transaction_date,
+                    'purpose': purpose,
+                    'quantity': quantity
+                })
             except Exception as e:
-                errors.append(f'{idx}행: {str(e)}')
-
-        conn.commit()
-        conn.close()
+                errors.append(f'{idx}행 파싱 오류: {str(e)}')
+                
+        if insert_data:
+            try:
+                # 500개씩 batch insert
+                for i in range(0, len(insert_data), 500):
+                    batch = insert_data[i:i+500]
+                    sb.table('raw_materials').insert(batch).execute()
+                    success_count += len(batch)
+            except Exception as e:
+                errors.append(f'DB 저장 중 오류: {str(e)}')
 
         return jsonify({
             'status': 'success',
@@ -455,131 +450,106 @@ def upload_usage_api():
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'파일 처리 중 오류: {str(e)}'}), 500
 
-
 @app.route('/api/usage/recent')
 def get_recent_usage():
-    """최근 출고 이력 조회 (최대 50건)"""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT id, item_code, product_name, lot_no, transaction_date, purpose, quantity
-            FROM raw_materials
-            WHERE transaction_type = '출고'
-            ORDER BY id DESC
-            LIMIT 50
-        ''')
-        rows = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        return jsonify({'status': 'success', 'data': rows})
+        sb = get_supabase_client()
+        res = sb.table('raw_materials').select('id, item_code, product_name, lot_no, transaction_date, purpose, quantity').eq('transaction_type', '출고').order('id', desc=True).limit(50).execute()
+        return jsonify({'status': 'success', 'data': res.data})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
-
 
 @app.route('/api/finished-product/inventory')
 def get_finished_product_inventory():
-    """완제품 Lot별 재고 조회 API"""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT product_code,
-                   product_name,
-                   lot_no,
-                   MIN(CASE WHEN transaction_type = '완제품입고' THEN transaction_date END) as manufacture_date,
-                   SUM(CASE WHEN transaction_type = '완제품입고' THEN quantity_kit ELSE 0 END) as total_in,
-                   SUM(CASE WHEN transaction_type = '완제품 출고' THEN quantity_kit ELSE 0 END) as total_out
-            FROM finished_products
-            GROUP BY product_code, product_name, lot_no
-            ORDER BY manufacture_date ASC, product_code ASC, lot_no ASC
-        ''')
+        sb = get_supabase_client()
+        res = sb.table('finished_products').select('*').execute()
+        
+        # product_code, product_name, lot_no 복합키
+        stats = defaultdict(lambda: {'mfg_date': None, 'total_in': 0.0, 'total_out': 0.0})
+        
+        for r in res.data:
+            key = (r['product_code'], r['product_name'], r['lot_no'])
+            if r['transaction_type'] == '완제품입고':
+                stats[key]['total_in'] += (r['quantity_kit'] or 0)
+                if not stats[key]['mfg_date'] or r['transaction_date'] < stats[key]['mfg_date']:
+                    stats[key]['mfg_date'] = r['transaction_date']
+            elif r['transaction_type'] == '완제품 출고':
+                stats[key]['total_out'] += (r['quantity_kit'] or 0)
+                
         rows = []
-        for row in cursor.fetchall():
-            d = dict(row)
-            d['current_stock'] = (d['total_in'] or 0) - (d['total_out'] or 0)
-            rows.append(d)
-        conn.close()
+        for (p_code, p_name, l_no), s in stats.items():
+            current_stock = s['total_in'] - s['total_out']
+            # 현재고가 1개 이상일 때만 표시한다는 정책 적용
+            if current_stock >= 1:
+                rows.append({
+                    'product_code': p_code,
+                    'product_name': p_name,
+                    'lot_no': l_no,
+                    'manufacture_date': s['mfg_date'],
+                    'total_in': s['total_in'],
+                    'total_out': s['total_out'],
+                    'current_stock': current_stock
+                })
+                
+        rows.sort(key=lambda x: (x['manufacture_date'] or '', x['product_code'] or '', x['lot_no'] or ''))            
         return jsonify({'status': 'success', 'data': rows})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
-
 
 @app.route('/api/finished-product/lot/<path:lot_no>')
 def get_finished_product_lot_details(lot_no):
-    """특정 완제품 Lot의 입출고 상세 내역 조회 API"""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT transaction_type,
-                   transaction_date,
-                   quantity_kit,
-                   destination,
-                   qc_info,
-                   remark
-            FROM finished_products
-            WHERE lot_no = ?
-            ORDER BY transaction_date ASC, id ASC
-        ''', (lot_no,))
-        rows = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        return jsonify({'status': 'success', 'data': rows})
+        sb = get_supabase_client()
+        res = sb.table('finished_products').select('transaction_type, transaction_date, quantity_kit, destination, qc_info, remark').eq('lot_no', lot_no).order('transaction_date').order('id').execute()
+        return jsonify({'status': 'success', 'data': res.data})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-
 @app.route('/api/finished-product/statistics')
 def get_finished_product_statistics():
-    """연도별/제품코드별 입출고 통계 API"""
     year = request.args.get('year')
     product_code = request.args.get('product_code')
     
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        sb = get_supabase_client()
+        res = sb.table('finished_products').select('lot_no, product_code, transaction_type, transaction_date, quantity_kit').execute()
         
-        # 기본 쿼리: 각 로트별로 첫 번째 '완제품입고' 날짜를 제조일자로 간주하여 연도를 추출합니다.
-        # 동일한 로트 안에서 일어난 모든 입/출고 수량을 집계합니다.
-        query = '''
-            WITH LotManufacture AS (
-                SELECT lot_no,
-                       product_code,
-                       MIN(CASE WHEN transaction_type = '완제품입고' THEN transaction_date END) as mfg_date
-                FROM finished_products
-                GROUP BY lot_no, product_code
-            )
-            SELECT
-                SUM(CASE WHEN f.transaction_type = '완제품입고' THEN f.quantity_kit ELSE 0 END) as total_in,
-                SUM(CASE WHEN f.transaction_type = '완제품 출고' THEN f.quantity_kit ELSE 0 END) as total_out
-            FROM finished_products f
-            JOIN LotManufacture lm ON f.lot_no = lm.lot_no AND f.product_code = lm.product_code
-            WHERE 1=1
-        '''
-        params = []
+        mfg_dates = {}
+        for r in res.data:
+            if r['transaction_type'] == '완제품입고':
+                key = (r['lot_no'], r['product_code'])
+                if key not in mfg_dates or r['transaction_date'] < mfg_dates[key]:
+                    mfg_dates[key] = r['transaction_date']
+                    
+        total_in = 0.0
+        total_out = 0.0
         
-        if year and year != 'all':
-            query += " AND SUBSTR(lm.mfg_date, 1, 4) = ?"
-            params.append(year)
+        for r in res.data:
+            key = (r['lot_no'], r['product_code'])
+            mfg_date = mfg_dates.get(key)
+            if not mfg_date:
+                continue
+                
+            mfg_year = mfg_date[:4] if mfg_date else None
             
-        if product_code and product_code != 'all':
-            query += " AND f.product_code = ?"
-            params.append(product_code)
-            
-        cursor.execute(query, params)
-        row = cursor.fetchone()
-        
+            if year and year != 'all' and mfg_year != year:
+                continue
+            if product_code and product_code != 'all' and r['product_code'] != product_code:
+                continue
+                
+            if r['transaction_type'] == '완제품입고':
+                total_in += (r['quantity_kit'] or 0)
+            elif r['transaction_type'] == '완제품 출고':
+                total_out += (r['quantity_kit'] or 0)
+                
         stats = {
-            'total_in': row['total_in'] if row['total_in'] else 0,
-            'total_out': row['total_out'] if row['total_out'] else 0
+            'total_in': total_in,
+            'total_out': total_out
         }
-        
-        conn.close()
         return jsonify({'status': 'success', 'data': stats})
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-
 if __name__ == '__main__':
-    app.run(host='192.168.1.151', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
