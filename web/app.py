@@ -333,10 +333,12 @@ def calculate_production():
         res_raw = sb.table('raw_materials').select('item_code, lot_no, transaction_type, quantity').in_('item_code', codes).execute()
         
         lot_stocks = defaultdict(float)
+        lot_in_qty = defaultdict(float)
         for r in res_raw.data:
             key = (r['item_code'], r['lot_no'])
             if r['transaction_type'] == '입고':
                 lot_stocks[key] += (r['quantity'] or 0)
+                lot_in_qty[key] += (r['quantity'] or 0)
             else:
                 lot_stocks[key] -= (r['quantity'] or 0)
 
@@ -353,15 +355,21 @@ def calculate_production():
                     info = info_map.get((itm_cd, lot_no), {})
                     rec_date = info.get('receive_date') or '9999-12-31'
                     exp_date = info.get('expire_date') or '9999-12-31'
+                    
+                    # 입고량 넷 대비 잔량이 적으면 이미 사용중인(뜯은) 원료로 간주
+                    total_in = lot_in_qty.get((itm_cd, lot_no), 0)
+                    is_in_use = 0 if stock < total_in else 1
+                    
                     available_lots.append({
                         'lot_no': lot_no,
                         'current_stock': stock,
                         'rec_date': rec_date,
-                        'exp_date': exp_date
+                        'exp_date': exp_date,
+                        'is_in_use': is_in_use
                     })
             
-            # 유효기간 빠른 순 -> 입고일 빠른 순 정렬
-            available_lots.sort(key=lambda x: (x['exp_date'], x['rec_date'], x['lot_no']))
+            # 최우선: 사용중인(0) 로트 -> 유효기간 빠른 순 -> 입고일 빠른 순 정렬
+            available_lots.sort(key=lambda x: (x['is_in_use'], x['exp_date'], x['rec_date'], x['lot_no']))
 
             allocated_lots = []
             remaining_to_allocate = required_qty
