@@ -39,7 +39,15 @@ def get_supabase_client() -> Client:
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    try:
+        return render_template('index.html')
+    except Exception as e:
+        import traceback
+        trace_str = traceback.format_exc()
+        html_files = []
+        if os.path.exists(BASE_DIR):
+            html_files = [f for f in os.listdir(BASE_DIR) if f.endswith('.html')]
+        return f"Error: {str(e)}<br>BASE_DIR: {BASE_DIR}<br>Files in BASE_DIR: {html_files}<br><pre>{trace_str}</pre>", 500
 
 @app.route('/inventory')
 def inventory():
@@ -380,8 +388,9 @@ def calculate_production():
         return jsonify({'status': 'success', 'data': results})
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        err_msg = traceback.format_exc()
+        print(f"ERROR in get_finished_product_statistics: {err_msg}")
+        return jsonify({'status': 'error', 'message': str(e), 'trace': err_msg}), 500
 
 @app.route('/api/usage/upload', methods=['POST'])
 def upload_usage_api():
