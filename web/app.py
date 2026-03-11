@@ -29,8 +29,8 @@ app.jinja_loader = ChoiceLoader([
 ])
 
 # 서버리스에서는 /tmp 디렉토리만 쓰기가 가능하지만, 여기선 단순 읽기 목적이므로 프로젝트 내 파일 참조
-JSON_FILE = os.path.join(BASE_DIR, '.tmp', 'material_master.json')
-THRESHOLD_FILE = os.path.join(BASE_DIR, '.tmp', 'inventory_thresholds.json')
+JSON_FILE = os.path.join(BASE_DIR, 'data', 'material_master.json')
+THRESHOLD_FILE = os.path.join(BASE_DIR, 'data', 'inventory_thresholds.json')
 
 def get_supabase_client() -> Client:
     if not SUPABASE_URL or not SUPABASE_KEY:
@@ -80,7 +80,7 @@ def get_producible():
         import bisect
 
         # ── 1. BOM.xlsx 파싱 ──────────────────────────────────────
-        BOM_FILE = os.path.join(BASE_DIR, '.tmp', 'BOM.xlsx')
+        BOM_FILE = os.path.join(BASE_DIR, 'data', 'BOM.xlsx')
         wb = openpyxl.load_workbook(BOM_FILE, read_only=True, data_only=True)
         ws = wb.active
 
