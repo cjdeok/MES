@@ -350,10 +350,10 @@
                 <h2><i class="fa-solid fa-chart-simple"></i> 원료별 최대 생산가능 Kit</h2>
                 <div class="header-right">
                     <div class="legend">
-                        <span class="legend-item"><span class="legend-dot" style="background:#10b981;"></span>10kit
+                        <span class="legend-item"><span class="legend-dot" style="background:#10b981;"></span>256kit
                             이상</span>
                         <span class="legend-item"><span class="legend-dot"
-                                style="background:#f59e0b;"></span>1~9kit</span>
+                                style="background:#f59e0b;"></span>1~255kit</span>
                         <span class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span>생산
                             불가</span>
                     </div>
@@ -408,8 +408,8 @@
                         // 카드
                         groups[key].forEach(row => {
                             const kit = row.max_kit ?? 0;
-                            const statusClass = kit >= 10 ? 'ok' : (kit >= 1 ? 'warn' : 'none');
-                            const kitClass = kit >= 10 ? 'kit-ok' : (kit >= 1 ? 'kit-warn' : 'kit-none');
+                            const statusClass = kit >= 256 ? 'ok' : (kit >= 1 ? 'warn' : 'none');
+                            const kitClass = kit >= 256 ? 'kit-ok' : (kit >= 1 ? 'kit-warn' : 'kit-none');
 
                             const card = document.createElement('div');
                             card.className = `prod-card ${statusClass}`;

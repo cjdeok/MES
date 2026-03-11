@@ -473,4 +473,4 @@ def get_recent_usage():
 
 
 if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+    app.run(host='192.168.1.151', port=5000, debug=True)
