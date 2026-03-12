@@ -74,8 +74,8 @@
 
         .alloc-item {
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            gap: 1.5rem;
             padding: 0.5rem 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             font-size: 0.9rem;
@@ -88,10 +88,12 @@
         .lot-badge {
             background: rgba(59, 130, 246, 0.15);
             color: #60a5fa;
-            padding: 0.2rem 0.5rem;
+            padding: 0.2rem 0.6rem;
             border-radius: 4px;
             font-family: monospace;
             font-size: 0.85rem;
+            min-width: 140px;
+            text-align: left;
         }
 
         .date-badge {
@@ -215,7 +217,7 @@
                                 <tr>
                                     <th>원료 코드 / 원료명</th>
                                     <th style="text-align: right;">필요 수량</th>
-                                    <th>할당 내역 (Lot / 입고일 / 할당수량)</th>
+                                    <th>할당 내역 (Lot / 유효기간 / 할당수량)</th>
                                     <th style="text-align: right;">부족 수량</th>
                                     <th style="text-align: center;">상태</th>
                                 </tr>

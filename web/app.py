@@ -423,6 +423,7 @@ def calculate_production():
                 allocated_lots.append({
                     'lot_no': lot['lot_no'],
                     'receive_date': lot['rec_date'] if lot['rec_date'] != '9999-12-31' else '정보 없음',
+                    'expire_date': lot['exp_date'] if lot['exp_date'] != '9999-12-31' else '정보 없음',
                     'available_stock': lot['current_stock'],
                     'allocated_qty': round(alloc_qty, 4)
                 })

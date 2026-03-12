@@ -110,8 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     lotHtml += `
                         <li class="alloc-item">
                             <span class="lot-badge">${lot.lot_no}</span>
-                            <span class="date-badge"><i class="fa-regular fa-clock"></i> ${lot.receive_date}</span>
-                            <span class="qty-badge">${lot.allocated_qty.toLocaleString()}</span>
+                            <span class="date-badge"><i class="fa-regular fa-calendar-days"></i> ${lot.expire_date}</span>
+                            <span class="qty-badge" style="margin-left: auto; font-weight: 700; color: #fff;">${lot.allocated_qty.toLocaleString()}</span>
                         </li>
                     `;
                 });
