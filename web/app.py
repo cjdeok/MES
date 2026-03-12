@@ -859,8 +859,17 @@ def get_validation_plan():
     """밸리데이션 계획 목록을 조회합니다."""
     try:
         sb = get_supabase_client()
-        res = sb.table('validation_plan').select('*').order('no').execute()
-        return jsonify({'status': 'success', 'data': res.data})
+        res = sb.table('validation_plan').select('*').execute()
+        
+        # 'no' 필드를 숫자로 변환하여 정렬 (숫자가 아닐 경우를 대비해 처리)
+        def sort_key(x):
+            try:
+                return int(x.get('no', 0))
+            except (ValueError, TypeError):
+                return 0
+                
+        sorted_data = sorted(res.data, key=sort_key)
+        return jsonify({'status': 'success', 'data': sorted_data})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
