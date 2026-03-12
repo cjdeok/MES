@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsSection = document.getElementById('results-section');
     const tbody = document.getElementById('production-tbody');
     const kitLabel = document.getElementById('kit-label');
+    const downloadBtn = document.getElementById('download-xlsx-btn');
+
+    let lastCalculatedData = null;
 
     calcBtn.addEventListener('click', async () => {
         const qty = parseInt(kitQtyInput.value);
@@ -28,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (result.status === 'success') {
                 kitLabel.textContent = `${qty} Kit 필요 원료`;
+                lastCalculatedData = result.data; // 데이터 저장
                 renderTable(result.data);
                 resultsSection.classList.remove('hidden');
             } else {
@@ -39,6 +43,52 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('서버와의 통신에 실패했습니다.');
             console.error('Error:', error);
             emptyStateEl.classList.remove('hidden');
+        }
+    });
+
+    // 엑셀 다운로드 처리
+    downloadBtn.addEventListener('click', async () => {
+        if (!lastCalculatedData) {
+            alert('먼저 소요량 계산을 수행해 주세요.');
+            return;
+        }
+
+        try {
+            downloadBtn.disabled = true;
+            downloadBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 다운로드 중...';
+
+            const response = await fetch('/api/production/export-excel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    items: lastCalculatedData,
+                    usage_date: '',
+                    usage_purpose: ''
+                })
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `생산할당내역_${new Date().toISOString().split('T')[0].replace(/-/g, '')}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                const errResult = await response.json();
+                alert('엑셀 생성 중 오류가 발생했습니다: ' + (errResult.message || '알 수 없는 오류'));
+            }
+        } catch (error) {
+            console.error('Excel Download Error:', error);
+            alert('엑셀 다운로드 중 서버 통신 오류가 발생했습니다.');
+        } finally {
+            downloadBtn.disabled = false;
+            downloadBtn.innerHTML = '<i class="fa-solid fa-file-excel"></i> 엑셀 다운로드';
         }
     });
 

@@ -163,9 +163,14 @@
             <section id="results-section" class="results-section hidden">
                 <!-- History Table -->
                 <div class="history-panel glass-panel">
-                    <div class="panel-header">
-                        <h2><i class="fa-solid fa-list-check"></i> 선입선출 기반 원료 할당 결과</h2>
-                        <span id="kit-label" class="badge"></span>
+                    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <h2><i class="fa-solid fa-list-check"></i> 선입선출 기반 원료 할당 결과</h2>
+                            <span id="kit-label" class="badge"></span>
+                        </div>
+                        <button id="download-xlsx-btn" class="action-btn" style="padding: 0.5rem 1rem; font-size: 0.85rem; height: auto; background: #10b981;">
+                            <i class="fa-solid fa-file-excel"></i> 엑셀 다운로드
+                        </button>
                     </div>
                     <div class="table-container">
                         <table>

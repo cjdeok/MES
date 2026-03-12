@@ -2,8 +2,9 @@ import os
 import io
 import json
 import openpyxl
+import datetime
 from collections import defaultdict
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_file
 from jinja2 import ChoiceLoader, FileSystemLoader
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -770,6 +771,82 @@ def get_raw_material_inventory():
         # 유효기간이 없는 경우 정렬 시 아래로 가도록 '9999-12-31' 처리
         result.sort(key=lambda x: (x['item_code'] or '', x['expire_date'] or '9999-12-31'))
         return jsonify({'status': 'success', 'data': result})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/production/export-excel', methods=['POST'])
+def export_production_excel():
+    """생산 할당 내역을 엑셀로 추출합니다."""
+    try:
+        data = request.json
+        items = data.get('items', [])
+        usage_date = data.get('usage_date', '')
+        usage_purpose = data.get('usage_purpose', '')
+        
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "생산 할당 내역"
+        
+        # 헤더 설정
+        headers = ["원료코드", "원료명", "할당 LOT", "할당 수량", "사용일자", "사용목적"]
+        ws.append(headers)
+        
+        # 데이터 추가
+        for item in items:
+            mat_code = item.get('material_code', '')
+            mat_name = item.get('material_name', '')
+            
+            allocated_lots = item.get('allocated_lots', [])
+            if not allocated_lots:
+                # 할당된 로트가 없는 경우 (재고 부족 등)
+                ws.append([mat_code, mat_name, "할당 실패", 0, usage_date, usage_purpose])
+            else:
+                for lot in allocated_lots:
+                    ws.append([
+                        mat_code,
+                        mat_name,
+                        lot.get('lot_no', ''),
+                        lot.get('allocated_qty', 0),
+                        usage_date,
+                        usage_purpose
+                    ])
+        
+        # 스타일링 (헤더 배경색 등)
+        from openpyxl.styles import PatternFill, Font, Alignment
+        header_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+        header_font = Font(bold=True)
+        
+        for cell in ws[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center')
+
+        # 컬럼 너비 자동 조정
+        for col in ws.columns:
+            max_length = 0
+            column = col[0].column_letter
+            for cell in col:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = (max_length + 2)
+            ws.column_dimensions[column].width = adjusted_width
+
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        file_date = usage_date.replace('-', '') if usage_date else datetime.datetime.now().strftime('%Y%m%d')
+        filename = f"Production_Allocation_{file_date}.xlsx"
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
