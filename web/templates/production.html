@@ -66,6 +66,34 @@
             transform: translateY(-1px);
         }
 
+        /* Input with Button Group */
+        .input-group-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            max-width: 500px;
+        }
+
+        .input-group-container label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .input-with-button {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .input-with-button #kit-qty-input {
+            flex: 1;
+        }
+
+        .input-with-button .action-btn {
+            white-space: nowrap;
+            padding: 0 1.5rem;
+        }
+
         .alloc-list {
             list-style: none;
             padding: 0;
@@ -173,13 +201,11 @@
             <!-- Control Panel -->
             <section class="control-panel glass-panel">
                 <h2><i class="fa-solid fa-calculator"></i> 생산 지시</h2>
-                <div class="filter-group" style="grid-template-columns: 2fr 1fr;">
-                    <div class="input-wrapper">
-                        <label for="kit-qty-input">키트 생산 수량 (1 ~ 256)</label>
+                <div class="input-group-container">
+                    <label for="kit-qty-input">키트 생산 수량 (1 ~ 256)</label>
+                    <div class="input-with-button">
                         <input type="number" id="kit-qty-input" min="1" max="256" placeholder="예: 10">
-                    </div>
-                    <div class="input-wrapper" style="display: flex; align-items: flex-end;">
-                        <button id="calc-btn" class="action-btn" style="height: 45px; width: 100%;">
+                        <button id="calc-btn" class="action-btn">
                             <i class="fa-solid fa-wand-magic-sparkles"></i> 소요량 계산
                         </button>
                     </div>
