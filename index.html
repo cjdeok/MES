@@ -327,13 +327,14 @@
                             <th style="padding:0.75rem 1rem; text-align:left; font-size:0.8rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05);">제품명</th>
                             <th style="padding:0.75rem 1rem; text-align:left; font-size:0.8rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05);">Lot No.</th>
                             <th style="padding:0.75rem 1rem; text-align:left; font-size:0.8rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05);">제조일자</th>
+                            <th style="padding:0.75rem 1rem; text-align:left; font-size:0.8rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05);">유효기간</th>
                             <th style="padding:0.75rem 1rem; text-align:right; font-size:0.8rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05);">입고</th>
                             <th style="padding:0.75rem 1rem; text-align:right; font-size:0.8rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05);">출고</th>
                             <th style="padding:0.75rem 1rem; text-align:right; font-size:0.8rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05);">현재 재고</th>
                         </tr>
                     </thead>
                     <tbody id="fp-tbody">
-                        <tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;"><i class="fa-solid fa-circle-notch fa-spin"></i> 불러오는 중...</td></tr>
+                        <tr><td colspan="8" style="text-align:center; padding:2rem; color:#94a3b8;"><i class="fa-solid fa-circle-notch fa-spin"></i> 불러오는 중...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -409,7 +410,7 @@
                     const activeItems = result.data.filter(item => item.current_stock > 0);
                     
                     if (activeItems.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;">현재 재고가 있는 Lot이 없습니다.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; color:#94a3b8;">현재 재고가 있는 Lot이 없습니다.</td></tr>';
                         return;
                     }
 
@@ -424,6 +425,7 @@
                             <td style="padding:0.75rem 1rem; font-weight:500;">${item.product_name || '-'}</td>
                             <td style="padding:0.75rem 1rem;"><span style="font-family:monospace; background:rgba(255,255,255,0.08); padding:0.15rem 0.45rem; border-radius:4px; font-size:0.83rem;">${item.lot_no || '-'}</span></td>
                             <td style="padding:0.75rem 1rem; color:#cbd5e1; font-size:0.88rem;">${item.manufacture_date || '-'}</td>
+                            <td style="padding:0.75rem 1rem; color:#f87171; font-size:0.88rem; font-weight:500;">${item.expire_date || '-'}</td>
                             <td style="padding:0.75rem 1rem; text-align:right; font-weight:600;">${(item.total_in || 0).toLocaleString()} <span style="font-size:0.75rem;color:#94a3b8;">Kit</span></td>
                             <td style="padding:0.75rem 1rem; text-align:right; font-weight:600; color:#f43f5e;">${(item.total_out || 0).toLocaleString()} <span style="font-size:0.75rem;color:#94a3b8;">Kit</span></td>
                             <td style="padding:0.75rem 1rem; text-align:right; font-weight:700; color:${stockClass};">${(item.current_stock || 0).toLocaleString()} <span style="font-size:0.75rem;color:#94a3b8;">Kit</span></td>
@@ -431,10 +433,10 @@
                         tbody.appendChild(tr);
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;">데이터가 없습니다.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; color:#94a3b8;">데이터가 없습니다.</td></tr>';
                 }
             } catch(e) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> 데이터를 불러올 수 없습니다.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> 데이터를 불러올 수 없습니다.</td></tr>';
             }
         }
         loadFinishedProductSummary();

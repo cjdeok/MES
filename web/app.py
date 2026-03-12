@@ -662,7 +662,7 @@ def get_finished_product_inventory():
         res = sb.table('finished_products').select('*').execute()
         
         # product_code, product_name, lot_no 복합키
-        stats = defaultdict(lambda: {'mfg_date': None, 'total_in': 0.0, 'total_out': 0.0})
+        stats = defaultdict(lambda: {'mfg_date': None, 'exp_date': None, 'total_in': 0.0, 'total_out': 0.0})
         
         for r in res.data:
             key = (r['product_code'], r['product_name'], r['lot_no'])
@@ -670,6 +670,8 @@ def get_finished_product_inventory():
                 stats[key]['total_in'] += (r['quantity_kit'] or 0)
                 if not stats[key]['mfg_date'] or r['transaction_date'] < stats[key]['mfg_date']:
                     stats[key]['mfg_date'] = r['transaction_date']
+                if r.get('expire_date'):
+                    stats[key]['exp_date'] = r['expire_date']
             elif r['transaction_type'] == '완제품 출고':
                 stats[key]['total_out'] += (r['quantity_kit'] or 0)
                 
@@ -681,6 +683,7 @@ def get_finished_product_inventory():
                 'product_name': p_name,
                 'lot_no': l_no,
                 'manufacture_date': s['mfg_date'],
+                'expire_date': s['exp_date'],
                 'total_in': s['total_in'],
                 'total_out': s['total_out'],
                 'current_stock': current_stock
