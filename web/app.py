@@ -77,6 +77,10 @@ def upload_receiving():
 def finished_product():
     return render_template('finished_product.html')
 
+@app.route('/raw-material')
+def raw_material():
+    return render_template('raw_material.html')
+
 @app.route('/api/producible')
 def get_producible():
     """현 재고량 기준 원료별 최대 생산가능 kit수 계산"""
@@ -704,6 +708,68 @@ def get_finished_product_statistics():
             'total_out': total_out
         }
         return jsonify({'status': 'success', 'data': stats})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/raw-material/inventory')
+def get_raw_material_inventory():
+    """원료의 Lot별 상세 재고 및 정보 조회 (유효기간 포함)"""
+    try:
+        sb = get_supabase_client()
+        
+        # 1. 원료 마스터 정보 (material_info) 조회 및 중복 제거
+        res_info = sb.table('material_info').select('*').execute()
+        
+        unique_info_map = {}
+        for info in res_info.data:
+            key = (info['item_code'], info['lot_no'])
+            # 동일 (item_code, lot_no)가 있을 경우 입고일이 더 최근인 정보를 유지
+            if key not in unique_info_map:
+                unique_info_map[key] = info
+            else:
+                existing_date = unique_info_map[key].get('receive_date') or ''
+                new_date = info.get('receive_date') or ''
+                if new_date > existing_date:
+                    unique_info_map[key] = info
+        
+        info_list = list(unique_info_map.values())
+        
+        # 2. 거래 내역 (raw_materials) 조회 및 Lot별 재고 계산
+        res_raw = sb.table('raw_materials').select('item_code, lot_no, transaction_type, quantity').execute()
+        
+        stock_map = defaultdict(float) # (item_code, lot_no) -> current_stock
+        for r in res_raw.data:
+            key = (r['item_code'], r['lot_no'])
+            qty = r['quantity'] or 0
+            if r['transaction_type'] == '입고':
+                stock_map[key] += qty
+            else:
+                stock_map[key] -= qty
+        
+        # 3. 데이터 결합
+        result = []
+        for info in info_list:
+            key = (info['item_code'], info['lot_no'])
+            current_stock = stock_map.get(key, 0.0)
+            
+            # 유효기간이 있는 항목만 처리하거나, 요청에 따라 모든 Lot 포함 가능
+            # 여기서는 모든 원료 Lot 정보를 포함하도록 함
+            result.append({
+                'item_code': info['item_code'],
+                'product_name': info['product_name'],
+                'lot_no': info['lot_no'],
+                'cat_no': info['cat_no'],
+                'receive_date': info['receive_date'],
+                'expire_date': info['expire_date'],
+                'current_stock': round(current_stock, 4),
+                'manufacturer': info['manufacturer'],
+                'vendor': info['vendor']
+            })
+            
+        # 정렬: 원료코드(item_code) 1순위, 유효기간(expire_date) 2순위
+        # 유효기간이 없는 경우 정렬 시 아래로 가도록 '9999-12-31' 처리
+        result.sort(key=lambda x: (x['item_code'] or '', x['expire_date'] or '9999-12-31'))
+        return jsonify({'status': 'success', 'data': result})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 

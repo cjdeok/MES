@@ -335,7 +335,11 @@
             </a>
             <a href="/inventory" class="nav-btn">
                 <i class="fa-solid fa-boxes-stacked"></i>
-                재고 모니터링
+                원료상세검색
+            </a>
+            <a href="/raw-material" class="nav-btn">
+                <i class="fa-solid fa-flask"></i>
+                원재료관리
             </a>
             <a href="/producible" class="nav-btn">
                 <i class="fa-solid fa-flask-vial"></i>
@@ -370,9 +374,9 @@
         <div class="stock-panel glass-panel">
             <div class="panel-header">
                 <h2><i class="fa-solid fa-chart-bar"></i> 원료별 재고 현황</h2>
-                <button class="refresh-btn" id="refresh-btn">
-                    <i class="fa-solid fa-rotate-right"></i> 새로고침
-                </button>
+                <a href="/raw-material" class="refresh-btn" style="text-decoration:none;">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> 상세보기
+                </a>
             </div>
             <div class="stock-grid" id="stock-grid">
                 <div id="stock-loading"><i class="fa-solid fa-circle-notch fa-spin"></i> 데이터를 불러오는 중입니다...</div>
@@ -462,7 +466,6 @@
             }
         }
 
-        document.getElementById('refresh-btn').addEventListener('click', loadStockSummary);
         loadStockSummary();
 
         async function loadFinishedProductSummary() {
