@@ -86,6 +86,34 @@ def raw_material():
 def validation():
     return render_template('validation.html')
 
+@app.route('/calibration')
+def calibration():
+    return render_template('calibration.html')
+
+@app.route('/api/validation/plan')
+def get_validation_plan():
+    try:
+        supabase = get_supabase_client()
+        response = supabase.table('validation_plan').select('*').execute()
+        # 번호순 정렬 (숫자로 변환하여 정렬)
+        data = response.data
+        data.sort(key=lambda x: int(x['no']) if str(x['no']).isdigit() else 9999)
+        return jsonify({"status": "success", "data": data})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/calibration/plan')
+def get_calibration_plan():
+    try:
+        supabase = get_supabase_client()
+        response = supabase.table('instrument_calibration').select('*').execute()
+        # 번호순 정렬
+        data = response.data
+        data.sort(key=lambda x: int(x['no']) if str(x['no']).isdigit() else 9999)
+        return jsonify({"status": "success", "data": data})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/api/producible')
 def get_producible():
     """현 재고량 기준 원료별 최대 생산가능 kit수 계산"""
