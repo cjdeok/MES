@@ -82,6 +82,10 @@ def finished_product():
 def raw_material():
     return render_template('raw_material.html')
 
+@app.route('/validation')
+def validation():
+    return render_template('validation.html')
+
 @app.route('/api/producible')
 def get_producible():
     """현 재고량 기준 원료별 최대 생산가능 kit수 계산"""
@@ -847,6 +851,16 @@ def export_production_excel():
             as_attachment=True,
             download_name=filename
         )
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/validation/plan')
+def get_validation_plan():
+    """밸리데이션 계획 목록을 조회합니다."""
+    try:
+        sb = get_supabase_client()
+        res = sb.table('validation_plan').select('*').order('no').execute()
+        return jsonify({'status': 'success', 'data': res.data})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MES 통합 관리 시스템 - 밸리데이션 계획</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { margin: 0; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; }
+        .app-container { padding: 84px 2rem 2rem; }
+        .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius-lg); padding: 1.5rem; }
+        .status-badge { padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+        .status-urgent { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .status-soon { background: rgba(245, 158, 11, 0.2); color: #fbd38d; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .status-safe { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .filter-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+        .filter-tab { padding: 0.5rem 1rem; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--text-muted); cursor: pointer; transition: all 0.2s; font-size: 0.875rem; }
+        .filter-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+    </style>
+</head>
+<body>
+    <header class="top-header">
+        <a href="/" class="header-brand"><i class="fa-solid fa-cube"></i><span>MES SYSTEM</span></a>
+        <nav class="header-nav">
+            <a href="/" class="nav-btn"><i class="fa-solid fa-house"></i>홈</a>
+            <a href="/raw-material" class="nav-btn"><i class="fa-solid fa-boxes-stacked"></i>원재료관리</a>
+            <a href="/finished-product" class="nav-btn"><i class="fa-solid fa-box-open"></i>완제품관리</a>
+            <a href="/validation" class="nav-btn active"><i class="fa-solid fa-clipboard-check"></i>밸리데이션</a>
+            <a href="/producible" class="nav-btn"><i class="fa-solid fa-flask-vial"></i>생산가능수량</a>
+            <a href="/production" class="nav-btn"><i class="fa-solid fa-industry"></i>생산 관리</a>
+        </nav>
+    </header>
+
+    <div class="app-container">
+        <div class="glass-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <div>
+                    <h1 style="font-size: 1.5rem; margin: 0; color: #fff;">연간 밸리데이션 계획 (2026)</h1>
+                    <p style="color: var(--text-muted); margin: 0.25rem 0 0; font-size: 0.9rem;">장비 및 시설의 정기 점검 계획을 확인하세요.</p>
+                </div>
+            </div>
+
+            <div class="filter-tabs" id="filter-tabs">
+                <div class="filter-tab active" data-filter="all">전체</div>
+                <div class="filter-tab" data-filter="1">1개월 이내</div>
+                <div class="filter-tab" data-filter="3">3개월 이내</div>
+                <div class="filter-tab" data-filter="6">6개월 이내</div>
+            </div>
+
+            <div class="table-container" style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; min-width: 1000px;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.08);">
+                            <th style="text-align: left; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">번호</th>
+                            <th style="text-align: left; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">대상 명칭</th>
+                            <th style="text-align: left; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">장비번호</th>
+                            <th style="text-align: left; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">주기</th>
+                            <th style="text-align: center; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">등급</th>
+                            <th style="text-align: left; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">최근 검사일</th>
+                            <th style="text-align: left; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">차기 계획일</th>
+                            <th style="text-align: center; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">수행처</th>
+                            <th style="text-align: center; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">상태</th>
+                        </tr>
+                    </thead>
+                    <tbody id="plan-tbody">
+                        <!-- Data rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allData = [];
+        let currentFilter = 'all';
+
+        async function fetchPlan() {
+            try {
+                const res = await fetch('/api/validation/plan');
+                const result = await res.json();
+                if (result.status === 'success') {
+                    allData = result.data;
+                    renderTable();
+                }
+            } catch (err) {
+                console.error("Fetch Error:", err);
+            }
+        }
+
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+            // "2026.11.05 이내" -> "2026.11.05"
+            const match = dateStr.match(/\d{4}\.\d{2}\.\d{2}/);
+            if (match) {
+                return new Date(match[0].replace(/\./g, '-'));
+            }
+            return null;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('plan-tbody');
+            tbody.innerHTML = '';
+
+            const now = new Date();
+            
+            const filteredData = allData.filter(item => {
+                if (currentFilter === 'all') return true;
+                
+                const planDate = parseDate(item.next_plan_date);
+                if (!planDate) return false;
+                
+                const monthsDiff = (planDate - now) / (1000 * 60 * 60 * 24 * 30);
+                return monthsDiff <= parseInt(currentFilter) && monthsDiff >= -1; // 지난 것은 안보여줄지 고민하다 일단 -1개월까지 포함
+            });
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 3rem; color: #64748b;">해당 조건에 맞는 계획이 없습니다.</td></tr>';
+                return;
+            }
+
+            filteredData.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
+                
+                const planDate = parseDate(item.next_plan_date);
+                let statusHtml = '';
+                let dateColor = '';
+
+                if (planDate) {
+                    const daysDiff = Math.ceil((planDate - now) / (1000 * 60 * 60 * 24));
+                    if (daysDiff <= 30) {
+                        statusHtml = '<span class="status-badge status-urgent">1개월 이내</span>';
+                        dateColor = '#fca5a5';
+                    } else if (daysDiff <= 90) {
+                        statusHtml = '<span class="status-badge status-soon">3개월 이내</span>';
+                        dateColor = '#fbd38d';
+                    } else if (daysDiff <= 180) {
+                        statusHtml = '<span class="status-badge status-safe">6개월 이내</span>';
+                    } else {
+                        statusHtml = '<span class="status-badge status-safe" style="opacity:0.6;">안정</span>';
+                    }
+                } else {
+                    statusHtml = '<span class="status-badge" style="background:rgba(255,255,255,0.05); color:#94a3b8;">정보없음</span>';
+                }
+
+                tr.innerHTML = `
+                    <td style="padding: 1rem; color: #94a3b8;">${item.no}</td>
+                    <td style="padding: 1rem; color: #fff; font-weight: 500;">${item.target_name}</td>
+                    <td style="padding: 1rem; color: #94a3b8;">${item.equipment_no}</td>
+                    <td style="padding: 1rem; color: #94a3b8;">${item.validation_cycle}</td>
+                    <td style="padding: 1rem; text-align: center;"><span class="badge" style="background: rgba(255,255,255,0.05); font-size: 0.7rem;">${item.safety_grade}</span></td>
+                    <td style="padding: 1rem; color: #94a3b8;">${item.last_inspection_date}</td>
+                    <td style="padding: 1rem; color: ${dateColor || '#fff'}; font-weight: 600;">${item.next_plan_date}</td>
+                    <td style="padding: 1rem; text-align: center; color: #94a3b8;">${item.performer}</td>
+                    <td style="padding: 1rem; text-align: center;">${statusHtml}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.getElementById('filter-tabs').addEventListener('click', (e) => {
+            const tab = e.target.closest('.filter-tab');
+            if (tab) {
+                document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentFilter = tab.dataset.filter;
+                renderTable();
+            }
+        });
+
+        fetchPlan();
+    </script>
+</body>
+</html>
