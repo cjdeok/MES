@@ -69,6 +69,10 @@ def material_info():
 def upload_usage():
     return render_template('upload_usage.html')
 
+@app.route('/upload-receiving')
+def upload_receiving():
+    return render_template('upload_receiving.html')
+
 @app.route('/finished-product')
 def finished_product():
     return render_template('finished_product.html')
@@ -406,6 +410,130 @@ def calculate_production():
         print(f"ERROR in get_finished_product_statistics: {err_msg}")
         return jsonify({'status': 'error', 'message': str(e), 'trace': err_msg}), 500
 
+@app.route('/api/receiving/upload', methods=['POST'])
+def upload_receiving_api():
+    if 'file' not in request.files:
+        return jsonify({'status': 'error', 'message': '파일이 첨부되지 않았습니다.'}), 400
+
+    file = request.files['file']
+    if not file.filename or not file.filename.endswith('.xlsx'):
+        return jsonify({'status': 'error', 'message': '.xlsx 파일만 업로드 가능합니다.'}), 400
+
+    try:
+        # 단일 시트 데이터 로드
+        wb = openpyxl.load_workbook(io.BytesIO(file.read()), read_only=True, data_only=True)
+        ws = wb.active
+
+        # 지정된 셀 좌표에서 값 추출
+        def gval(cell):
+            val = ws[cell].value
+            if val is None:
+                return ''
+            if hasattr(val, 'strftime'):  # datetime 처리
+                return val.strftime('%Y-%m-%d')
+            return str(val).strip()
+
+        # 사용자 요청 엑셀 좌표 업데이트
+        product_name = gval('D5')
+        manufacturer = gval('D6')
+        quantity_raw = gval('D7')
+        po_no = gval('D9')
+        
+        cat_no = gval('H5')
+        vendor = gval('H6')
+        lot_no = gval('H7')
+        
+        receive_date = gval('O5')
+        qc_date = gval('O6')
+        expire_date = gval('O7')
+        item_code = gval('O8')
+        storage_location = gval('H8') # 스크린샷 참고 (보관장소 위치 추정)
+        
+        wb.close()
+
+        # 데이터 유효성 검사
+        if not item_code or not lot_no:
+            return jsonify({'status': 'error', 'message': '엑셀 양식 오류: 제품 코드(O8) 또는 Lot No(H7)가 누락되었습니다.'}), 400
+            
+        import re
+        # 수량에서 숫자만 추출 (ex: 500g -> 500)
+        quantity = 0.0
+        match = re.search(r'[\d\.]+', quantity_raw)
+        if match:
+            quantity = float(match.group())
+        if quantity <= 0:
+            return jsonify({'status': 'error', 'message': f'유효하지 않은 입고수량입니다. (추출값: {quantity_raw})'}), 400
+
+        sb = get_supabase_client()
+        
+        # 1단계: material_info 테이블 업데이트/삽입 (수동 upsert 로직 + ID 충돌 방지)
+        try:
+            # 기존 레코드 존재 여부 확인 (item_code와 lot_no 기준)
+            existing = sb.table('material_info').select('id').eq('item_code', item_code).eq('lot_no', lot_no).execute()
+            
+            info_data = {
+                'item_code': item_code,
+                'product_name': product_name,
+                'cat_no': cat_no,
+                'lot_no': lot_no,
+                'purchase_qty': quantity,
+                'manufacturer': manufacturer,
+                'vendor': vendor,
+                'receive_date': receive_date if receive_date else None,
+                'qc_date': qc_date if qc_date else None,
+                'expire_date': expire_date if expire_date else None,
+                'po_no': po_no
+            }
+
+            if existing.data:
+                # 이미 존재하면 업데이트
+                row_id = existing.data[0]['id']
+                sb.table('material_info').update(info_data).eq('id', row_id).execute()
+                print(f"material_info updated (ID: {row_id})")
+            else:
+                # 존재하지 않으면 삽입 (ID 시퀀스 충돌 방지를 위해 최대 ID 조회 후 할당)
+                max_res = sb.table('material_info').select('id').order('id', desc=True).limit(1).execute()
+                next_id = 1
+                if max_res.data:
+                    next_id = max_res.data[0]['id'] + 1
+                
+                info_data['id'] = next_id
+                sb.table('material_info').insert(info_data).execute()
+                print(f"material_info inserted (ID: {next_id})")
+        except Exception as e_info:
+            print(f"material_info processing error: {str(e_info)}")
+            # 정보 테이블 저장 실패 시에도 로그를 남기고 계속 진행 (또는 에러 반환 선택 가능)
+
+        # 2단계: raw_materials 입고 내역 추가 (ID 시퀀스 충돌 방지 적용)
+        try:
+            # raw_materials 테이블도 ID 충돌 방지 적용
+            max_raw = sb.table('raw_materials').select('id').order('id', desc=True).limit(1).execute()
+            next_raw_id = 1
+            if max_raw.data:
+                next_raw_id = max_raw.data[0]['id'] + 1
+
+            sb.table('raw_materials').insert({
+                'id': next_raw_id,
+                'item_code': item_code,
+                'product_name': product_name if product_name else '알 수 없음',
+                'transaction_type': '입고',
+                'transaction_date': receive_date if receive_date else None,
+                'purpose': f'입고 성적서 업로드 (PO: {po_no})',
+                'quantity': quantity,
+                'lot_no': lot_no
+            }).execute()
+            print(f"raw_materials inserted (ID: {next_raw_id})")
+        except Exception as e_raw:
+            return jsonify({'status': 'error', 'message': f'입고 내역 저장 실패(ID충돌 등): {str(e_raw)}'}), 500
+
+        return jsonify({'status': 'success', 'message': f'[{item_code}] {product_name} ({quantity} 입고) 내역이 정상 등록되었습니다.'})
+
+    except Exception as e:
+        import traceback
+        err_msg = traceback.format_exc()
+        print(f"Receiving Upload ERROR: {err_msg}")
+        return jsonify({'status': 'error', 'message': str(e), 'trace': err_msg}), 500
+
 @app.route('/api/usage/upload', methods=['POST'])
 def upload_usage_api():
     if 'file' not in request.files:
@@ -510,17 +638,15 @@ def get_finished_product_inventory():
         rows = []
         for (p_code, p_name, l_no), s in stats.items():
             current_stock = s['total_in'] - s['total_out']
-            # 현재고가 1개 이상일 때만 표시한다는 정책 적용
-            if current_stock >= 1:
-                rows.append({
-                    'product_code': p_code,
-                    'product_name': p_name,
-                    'lot_no': l_no,
-                    'manufacture_date': s['mfg_date'],
-                    'total_in': s['total_in'],
-                    'total_out': s['total_out'],
-                    'current_stock': current_stock
-                })
+            rows.append({
+                'product_code': p_code,
+                'product_name': p_name,
+                'lot_no': l_no,
+                'manufacture_date': s['mfg_date'],
+                'total_in': s['total_in'],
+                'total_out': s['total_out'],
+                'current_stock': current_stock
+            })
                 
         rows.sort(key=lambda x: (x['manufacture_date'] or '', x['product_code'] or '', x['lot_no'] or ''))            
         return jsonify({'status': 'success', 'data': rows})

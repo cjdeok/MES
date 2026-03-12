@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>입고 성적서 업로드 - MES</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+        }
+
+        .page-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem 2.5rem;
+        }
+
+        /* ─── Header ─── */
+        .page-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: rgba(59, 130, 246, 0.15);
+            color: white;
+        }
+
+        .header-text h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 0.3rem;
+        }
+
+        .header-text p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* ─── Upload Zone ─── */
+        .upload-section {
+            margin-bottom: 2rem;
+        }
+
+        .drop-zone {
+            border: 2px dashed rgba(59, 130, 246, 0.35);
+            border-radius: var(--radius-lg);
+            padding: 3rem 2rem;
+            text-align: center;
+            background: rgba(59, 130, 246, 0.04);
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .drop-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.1);
+            transform: scale(1.01);
+        }
+
+        .drop-zone-icon {
+            font-size: 2.8rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            opacity: 0.8;
+        }
+
+        .drop-zone-text {
+            font-size: 1.05rem;
+            color: var(--text-main);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .drop-zone-hint {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 1.2rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .browse-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.7rem 1.5rem;
+            border-radius: var(--radius-sm);
+            background: var(--primary);
+            color: white;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .browse-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        /* ─── Selected File Info ─── */
+        .file-info {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            margin-top: 1rem;
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: var(--radius-md);
+        }
+
+        .file-info.show {
+            display: flex;
+        }
+
+        .file-info-left {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .file-info-left i {
+            color: var(--success);
+            font-size: 1.2rem;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .file-size {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .remove-file-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 0.3rem;
+            transition: color 0.2s;
+        }
+
+        .remove-file-btn:hover {
+            color: var(--danger);
+        }
+
+        /* ─── Preview Table ─── */
+        .preview-section {
+            display: none;
+            margin-bottom: 2rem;
+        }
+
+        .preview-section.show {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .section-title i {
+            color: var(--primary);
+        }
+
+        .preview-table-wrap {
+            max-height: 320px;
+            overflow-y: auto;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+        }
+
+        .preview-table th {
+            background: rgba(15, 23, 42, 0.95);
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.8rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .preview-table td {
+            padding: 0.7rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+        }
+
+        .cell-code {
+            font-family: 'Consolas', monospace;
+            background: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.82rem;
+        }
+
+        .cell-qty {
+            font-weight: 600;
+            color: var(--danger);
+        }
+
+        /* ─── Upload Button ─── */
+        .action-bar {
+            display: none;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .action-bar.show {
+            display: flex;
+        }
+
+        .upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.8rem 2rem;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        /* ─── Result Banner ─── */
+        .result-banner {
+            display: none;
+            padding: 1.2rem 1.5rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 2rem;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .result-banner.show {
+            display: block;
+        }
+
+        .result-banner.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .result-banner.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .result-summary {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-summary i {
+            font-size: 1.2rem;
+        }
+
+        .result-banner.success .result-summary i {
+            color: var(--success);
+        }
+
+        .result-banner.error .result-summary i {
+            color: var(--danger);
+        }
+
+        /* ─── Loading overlay ─── */
+        .upload-loading {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .upload-loading.show {
+            display: flex;
+        }
+
+        .upload-loading .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="upload-loading" id="upload-loading">
+        <div class="spinner"></div>
+        <p>업로드 중입니다...</p>
+    </div>
+
+    <div class="page-container">
+        <!-- Header -->
+        <div class="page-header">
+            <a href="/" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
+            <div class="header-text">
+                <h1><i class="fa-solid fa-file-arrow-down" style="color: var(--primary); margin-right: 0.3rem;"></i> 원료 입고 성적서 업로드</h1>
+                <p>단일 품목 입고 검사 성적서(.xlsx) 양식을 등록하여 자동으로 데이터를 파싱합니다.</p>
+            </div>
+        </div>
+
+        <!-- Example Section -->
+        <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
+            <div class="section-header" style="margin-bottom: 1.5rem;">
+                <span class="section-title"><i class="fa-solid fa-circle-info"></i> 원료 관리대장 엑셀 양식 예시 (데이터 추출 기준)</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <div style="width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 25px rgba(0,0,0,0.4);">
+                    <img src="/static/img/receiving_example.png" alt="엑셀 양식 예시" style="width: 100%; height: auto; display: block; filter: contrast(1.05);">
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; background: rgba(255, 255, 255, 0.02); padding: 1.2rem; border-radius: 8px;">
+                    <div>
+                        <p style="color: #fff; font-weight: 600; margin-top: 0; font-size: 0.95rem; margin-bottom: 0.8rem;">좌측 데이터 (Column D)</p>
+                        <ul style="padding-left: 1.2rem; color: #94a3b8; font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                            <li><b style="color:#60a5fa;">제품명 (D5)</b>, <b style="color:#60a5fa;">제조사 (D6)</b></li>
+                            <li><b style="color:#60a5fa;">구입량 (D7)</b>, <b style="color:#60a5fa;">문서번호 (D9)</b></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p style="color: #fff; font-weight: 600; margin-top: 0; font-size: 0.95rem; margin-bottom: 0.8rem;">중앙 데이터 (Column H/F)</p>
+                        <ul style="padding-left: 1.2rem; color: #94a3b8; font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                            <li><b style="color:#60a5fa;">Cat. No. (H5)</b>, <b style="color:#60a5fa;">구매처 (H6)</b></li>
+                            <li><b style="color:#60a5fa;">Lot No. (H7)</b>, <b style="color:#60a5fa;">보관장소 (H8)</b></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p style="color: #fff; font-weight: 600; margin-top: 0; font-size: 0.95rem; margin-bottom: 0.8rem;">우측 데이터 (Column O)</p>
+                        <ul style="padding-left: 1.2rem; color: #94a3b8; font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                            <li><b style="color:#60a5fa;">입고일 (O5)</b>, <b style="color:#60a5fa;">Q.C.일 (O6)</b></li>
+                            <li><b style="color:#60a5fa;">유효기간 (O7)</b>, <b style="color:#60a5fa;">코드번호 (O8)</b></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Zone -->
+        <div class="upload-section">
+            <div class="drop-zone" id="drop-zone">
+                <i class="fa-solid fa-cloud-arrow-up drop-zone-icon"></i>
+                <p class="drop-zone-text">여기에 입고 성적서 엑셀 파일을 드래그하거나</p>
+                <p class="drop-zone-hint">지정된 엑셀 포맷(C2, F2 등의 좌표에 값이 포함된 양식) 파일만 가능합니다.</p>
+                <button class="browse-btn" id="browse-btn">
+                    <i class="fa-solid fa-folder-open"></i> 파일 선택
+                </button>
+                <input type="file" class="file-input" id="file-input" accept=".xlsx">
+            </div>
+
+            <div class="file-info" id="file-info">
+                <div class="file-info-left">
+                    <i class="fa-solid fa-file-excel"></i>
+                    <div>
+                        <div class="file-name" id="file-name">-</div>
+                        <div class="file-size" id="file-size-text">-</div>
+                    </div>
+                </div>
+                <button class="remove-file-btn" id="remove-file-btn" title="파일 제거">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="preview-section" id="preview-section">
+            <div class="section-header">
+                <span class="section-title"><i class="fa-solid fa-magnifying-glass"></i> 추출 데이터 미리보기 (확인용)</span>
+            </div>
+            <div class="preview-table-wrap">
+                <table class="preview-table">
+                    <thead>
+                        <tr>
+                            <th>코드/제품명</th>
+                            <th>Lot No</th>
+                            <th>수량/단위</th>
+                            <th>구매처/PO</th>
+                            <th>제조사</th>
+                            <th>입고/유효기간</th>
+                        </tr>
+                    </thead>
+                    <tbody id="preview-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Action Bar -->
+        <div class="action-bar" id="action-bar">
+            <button class="upload-btn" id="upload-btn">
+                <i class="fa-solid fa-save"></i> 확인 및 입고등록 실행
+            </button>
+        </div>
+
+        <!-- Result Banner -->
+        <div class="result-banner" id="result-banner">
+            <div class="result-summary" id="result-summary"></div>
+            <div class="result-errors" id="result-errors" style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+        </div>
+    </div>
+
+    <!-- SheetJS API -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const browseBtn = document.getElementById('browse-btn');
+        const fileInfoEl = document.getElementById('file-info');
+        const fileNameEl = document.getElementById('file-name');
+        const fileSizeEl = document.getElementById('file-size-text');
+        const removeBtn = document.getElementById('remove-file-btn');
+        const previewSection = document.getElementById('preview-section');
+        const previewBody = document.getElementById('preview-body');
+        const actionBar = document.getElementById('action-bar');
+        const uploadBtn = document.getElementById('upload-btn');
+        const resultBanner = document.getElementById('result-banner');
+        const resultSummary = document.getElementById('result-summary');
+        const loadingOverlay = document.getElementById('upload-loading');
+
+        let selectedFile = null;
+
+        // Drag events
+        ['dragenter', 'dragover'].forEach(e => {
+            dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.add('dragover'); });
+        });
+        ['dragleave', 'drop'].forEach(e => {
+            dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.remove('dragover'); });
+        });
+        dropZone.addEventListener('drop', ev => {
+            const file = ev.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+        browseBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files[0]) handleFile(fileInput.files[0]);
+        });
+        removeBtn.addEventListener('click', resetFile);
+
+        function handleFile(file) {
+            if (!file.name.endsWith('.xlsx')) {
+                alert('.xlsx 파일만 업로드 가능합니다.');
+                return;
+            }
+            selectedFile = file;
+            fileNameEl.textContent = file.name;
+            fileSizeEl.textContent = formatBytes(file.size);
+            fileInfoEl.classList.add('show');
+            resultBanner.classList.remove('show');
+            parsePreview(file);
+        }
+
+        function resetFile() {
+            selectedFile = null;
+            fileInput.value = '';
+            fileInfoEl.classList.remove('show');
+            previewSection.classList.remove('show');
+            actionBar.classList.remove('show');
+            previewBody.innerHTML = '';
+        }
+
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            return (bytes / 1024).toFixed(1) + ' KB';
+        }
+
+        function getCellStr(ws, ref) {
+            const cell = ws[ref];
+            return cell && cell.w ? String(cell.w) : (cell && cell.v ? String(cell.v) : '추출 실패');
+        }
+
+        function parsePreview(file) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const wb = XLSX.read(e.target.result, { type: 'array', cellText: true, cellDates: true });
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    
+                    // 필수 데이터인 제품명(D5)이 있는지 확인하여 양식 유효성 검사
+                    if(!ws['D5'] || getCellStr(ws, 'D5') === '추출 실패') {
+                        alert("입고 성적서 양식이 올바르지 않거나 제품명(D5)을 찾을 수 없습니다.");
+                        return;
+                    }
+                    
+                    const productName = getCellStr(ws, 'D5');
+                    const manuf = getCellStr(ws, 'D6');
+                    const qtyRaw = getCellStr(ws, 'D7');
+                    const poNo = getCellStr(ws, 'D9');
+                    
+                    const catNo = getCellStr(ws, 'H5');
+                    const vendor = getCellStr(ws, 'H6');
+                    const lotNo = getCellStr(ws, 'H7');
+                    
+                    const recDate = getCellStr(ws, 'O5');
+                    const qcDate = getCellStr(ws, 'O6');
+                    const expDate = getCellStr(ws, 'O7');
+                    const itemCode = getCellStr(ws, 'O8');
+
+                    previewBody.innerHTML = `
+                        <tr>
+                            <td>
+                                <div style="font-weight: 600; color: #fff;">${productName}</div>
+                                <div class="cell-code" style="margin-top:2px;">${itemCode}</div>
+                            </td>
+                            <td><span class="cell-code" style="color:#d946ef; background:rgba(217, 70, 239, 0.1);">${lotNo}</span></td>
+                            <td><span class="cell-qty">${qtyRaw}</span></td>
+                            <td>
+                                <div>${vendor}</div>
+                                <div style="font-size:0.75rem; color:#94a3b8;">${poNo}</div>
+                            </td>
+                            <td>${manuf}</td>
+                            <td>
+                                <div>${recDate}</div>
+                                <div style="font-size:0.75rem; color:#f43f5e;">~ ${expDate}</div>
+                            </td>
+                        </tr>
+                    `;
+
+                    previewSection.classList.add('show');
+                    actionBar.classList.add('show');
+                } catch (err) {
+                    alert('파일 파싱 중 오류: ' + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            uploadBtn.disabled = true;
+            loadingOverlay.classList.add('show');
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const res = await fetch('/api/receiving/upload', { method: 'POST', body: formData });
+                const result = await res.json();
+
+                loadingOverlay.classList.remove('show');
+                resultBanner.classList.add('show');
+
+                if (result.status === 'success') {
+                    resultBanner.className = 'result-banner show success';
+                    resultSummary.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${result.message}`;
+                    document.getElementById('result-errors').innerHTML = '';
+                    resetFile();
+                } else {
+                    resultBanner.className = 'result-banner show error';
+                    resultSummary.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> 업로드 실패`;
+                    document.getElementById('result-errors').innerHTML = result.message;
+                }
+            } catch (err) {
+                loadingOverlay.classList.remove('show');
+                resultBanner.className = 'result-banner show error';
+                resultSummary.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> 서버 연결 오류`;
+            }
+
+            uploadBtn.disabled = false;
+        });
+    </script>
+</body>
+
+</html>
