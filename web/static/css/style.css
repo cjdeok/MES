@@ -81,6 +81,12 @@ body {
     white-space: nowrap;
 }
 
+.brand-logo {
+    height: 24px;
+    width: auto;
+    object-fit: contain;
+}
+
 .header-nav {
     display: flex;
     align-items: center;
