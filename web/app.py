@@ -90,6 +90,19 @@ def validation():
 def calibration():
     return render_template('calibration.html')
 
+@app.route('/purchase-dashboard')
+def purchase_dashboard():
+    return render_template('purchase_dashboard.html')
+
+@app.route('/api/purchase/info')
+def get_purchase_info():
+    try:
+        supabase = get_supabase_client()
+        response = supabase.table('purchase_info').select('*').execute()
+        return jsonify({'status': 'success', 'data': response.data})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 @app.route('/api/validation/plan')
 def get_validation_plan():
     try:
