@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MES 통합 관리 시스템 - 구매내역 정밀 분석</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --bg-dark: #0f172a;
+            --panel-bg: rgba(30, 41, 59, 0.7);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --radius-lg: 12px;
+            --radius-md: 8px;
+            --border: rgba(255, 255, 255, 0.1);
+            --up: #ef4444;
+            --down: #10b981;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        /* Header Style */
+        .top-header {
+            position: fixed; top: 0; left: 0; right: 0;
+            height: 60px; background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(8px); border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 1.5rem; z-index: 100;
+        }
+        .header-brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: #fff; font-weight: 700; }
+        .brand-logo { height: 32px; width: auto; }
+        .header-nav { display: flex; gap: 0.5rem; }
+        .nav-btn {
+            color: var(--text-muted); text-decoration: none; padding: 0.5rem 0.8rem;
+            border-radius: var(--radius-md); font-size: 0.85rem; font-weight: 500;
+            display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s;
+        }
+        .nav-btn:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
+
+        .main-content {
+            padding: 80px 2.5rem 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        /* Filter Panel */
+        .filter-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            align-items: end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; }
+
+        .filter-input {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 0.65rem 0.8rem;
+            color: #fff;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+        select.filter-input {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.7rem center;
+            background-size: 1rem;
+            padding-right: 2rem;
+        }
+
+        .filter-input:focus { border-color: var(--primary); background: rgba(15, 23, 42, 0.9); }
+
+        .search-btn {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 0.7rem 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+        }
+        .search-btn:hover { background: var(--primary-dark); }
+
+        /* Chart Area */
+        .chart-section { display: none; margin-bottom: 1.5rem; }
+        .chart-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            height: 380px;
+            position: relative;
+        }
+
+        /* Summary Panel (Footer) */
+        .summary-panel {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: var(--radius-lg);
+            padding: 1.2rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .summary-item { display: flex; flex-direction: column; gap: 0.5rem; }
+        .summary-label { font-size: 0.85rem; color: var(--text-muted); }
+        .summary-value { font-size: 1.25rem; font-weight: 700; color: #fff; }
+        .summary-list { font-size: 0.9rem; line-height: 1.4; color: var(--text-main); }
+
+        /* Table Section */
+        .table-container {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            overflow-x: auto;
+        }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th {
+            text-align: left; padding: 0.8rem 1rem; color: var(--text-muted); font-weight: 600;
+            border-bottom: 1px solid var(--border); background: rgba(255, 255, 255, 0.02);
+            white-space: nowrap;
+        }
+        td { padding: 0.8rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); white-space: nowrap; }
+        tr:hover td { background: rgba(255, 255, 255, 0.03); }
+
+        .price-up { color: var(--up); font-weight: 600; }
+        .price-down { color: var(--down); font-weight: 600; }
+        .price-stable { color: var(--text-muted); }
+        .highlight { color: #fff; font-weight: 600; }
+        .badge-validation { background: rgba(59, 130, 246, 0.2); color: #60a5fa; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; }
+        .badge-raw { background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; }
+
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+        /* ─── Modal ─── */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            display: none; justify-content: center; align-items: center;
+            z-index: 1000;
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .modal-overlay.show { display: flex; opacity: 1; }
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-lg);
+            width: 95%; max-width: 1400px; max-height: 85vh;
+            display: flex; flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            transform: translateY(20px); transition: transform 0.2s;
+        }
+        .modal-overlay.show .modal-content { transform: translateY(0); }
+        .modal-header {
+            padding: 1.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(15, 23, 42, 0.4); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        }
+        .modal-header h3 { margin: 0; font-size: 1.2rem; color: #fff; display: flex; align-items: center; gap: 0.6rem; }
+        .modal-header h3 i { color: var(--primary); }
+        .modal-close {
+            background: transparent; border: none; color: var(--text-muted);
+            font-size: 1.25rem; cursor: pointer; transition: color 0.2s;
+        }
+        .modal-close:hover { color: #fff; }
+        .modal-body {
+            padding: 1.5rem; overflow-y: auto; flex: 1;
+        }
+        .modal-table { width: 100%; border-collapse: collapse; }
+        .modal-table th, .modal-table td {
+            padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.85rem;
+            color: #fff;
+        }
+        .modal-table th { color: var(--text-muted); font-weight: 600; background: rgba(255, 255, 255, 0.02); position: sticky; top: 0; }
+        
+        .doc-link { 
+            color: #60a5fa; 
+            text-decoration: underline; 
+            text-underline-offset: 3px; 
+            cursor: pointer; 
+            font-family: monospace; 
+            font-size: 0.8rem;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .doc-link:hover { background: rgba(59, 130, 246, 0.15); color: #93c5fd; }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading-overlay">
+        <div><i class="fa-solid fa-circle-notch fa-spin fa-2x"></i> 정밀 분석 중...</div>
+    </div>
+
+    <header class="top-header">
+        <a href="/" class="header-brand">
+            <img src="/static/img/logo.png" alt="Logo" class="brand-logo">
+            <span>생산관리팀 통합 관리</span>
+        </a>
+        <nav class="header-nav">
+            <a href="/material-info" class="nav-btn">
+                <i class="fa-solid fa-list-ul"></i>
+                안전재고
+            </a>
+            <a href="/purchase-dashboard" class="nav-btn active">
+                <i class="fa-solid fa-chart-line"></i>
+                구매 대시보드
+            </a>
+            <a href="/inventory" class="nav-btn">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                원료상세검색
+            </a>
+            <a href="/raw-material" class="nav-btn">
+                <i class="fa-solid fa-flask"></i>
+                원재료관리
+            </a>
+            <a href="/producible" class="nav-btn">
+                <i class="fa-solid fa-flask-vial"></i>
+                생산가능수량
+            </a>
+            <a href="/production" class="nav-btn">
+                <i class="fa-solid fa-industry"></i>
+                생산 관리
+            </a>
+            <a href="/finished-product" class="nav-btn">
+                <i class="fa-solid fa-box"></i>
+                완제품관리
+            </a>
+            <a href="/validation" class="nav-btn">
+                <i class="fa-solid fa-clipboard-check"></i>
+                밸리데이션
+            </a>
+            <a href="/calibration" class="nav-btn">
+                <i class="fa-solid fa-compass-drafting"></i>
+                검교정
+            </a>
+            <a href="/upload-usage" class="nav-btn">
+                <i class="fa-solid fa-file-arrow-up"></i>
+                사용량 업로드
+            </a>
+            <a href="/upload-receiving" class="nav-btn">
+                <i class="fa-solid fa-file-import"></i>
+                입고 업로드
+            </a>
+        </nav>
+    </header>
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title"><i class="fa-solid fa-receipt" style="color:var(--primary);"></i> 구매 데이터 정밀 분석</h1>
+        </div>
+
+        <div class="filter-panel">
+            <div class="filter-group">
+                <label class="filter-label">조회 시작일</label>
+                <input type="date" id="startDate" class="filter-input">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">조회 종료일</label>
+                <input type="date" id="endDate" class="filter-input">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">분류 구분</label>
+                <select id="categoryDropdown" class="filter-input" onchange="onCategoryChange()">
+                    <option value="">전체 구분</option>
+                    <option value="밸리데이션">밸리데이션</option>
+                    <option value="원료">원료</option>
+                </select>
+            </div>
+            <div class="filter-group" style="flex-grow: 1;">
+                <label class="filter-label">분석 품명1 선택 (상세 분석용)</label>
+                <select id="productDropdown" class="filter-input">
+                    <option value="">-- 품명을 선택하세요 --</option>
+                </select>
+            </div>
+            <button onclick="performSearch()" class="search-btn">
+                <i class="fa-solid fa-magnifying-glass"></i> 데이터 조회
+            </button>
+        </div>
+
+        <!-- Summary Panel (Moved below filter) -->
+        <div id="summaryPanel" class="summary-panel">
+            <div class="summary-item">
+                <span class="summary-label">총 구매 건수</span>
+                <span id="sum-count" class="summary-value">0건</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">총 구매 금액 합계</span>
+                <span id="sum-total" class="summary-value" style="color: var(--primary);">₩0</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">평균 실단가</span>
+                <span id="sum-avg" class="summary-value">₩0</span>
+            </div>
+            <div class="summary-item" style="grid-column: span 2;">
+                <span class="summary-label">주요 구매처</span>
+                <div id="sum-vendors" class="summary-list">-</div>
+            </div>
+        </div>
+
+        <div id="chartSection" class="chart-section">
+            <div class="chart-card">
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        let allData = [];
+        let priceChartInstance = null;
+
+        async function init() {
+            try {
+                const res = await fetch('/api/purchase/info');
+                const result = await res.json();
+                
+                if (result.status === 'success') {
+                    allData = result.data;
+                    
+                    if (allData.length > 0) {
+                        // 최초 구매일 찾기
+                        const dates = allData.map(d => new Date(d.작성일자)).filter(d => !isNaN(d));
+                        const minDate = new Date(Math.min(...dates));
+                        const maxDate = new Date(); // 오늘
+
+                        document.getElementById('startDate').value = minDate.toISOString().split('T')[0];
+                        document.getElementById('endDate').value = maxDate.toISOString().split('T')[0];
+                    }
+                    
+                    onCategoryChange();
+                    performSearch();
+                }
+            } catch (err) { console.error(err); }
+            finally { document.getElementById('loading').style.display = 'none'; }
+        }
+
+        function onCategoryChange() {
+            const category = document.getElementById('categoryDropdown').value;
+            const select = document.getElementById('productDropdown');
+            select.innerHTML = '<option value="">-- 품명을 선택하세요 --</option>';
+            
+            let filteredProducts = [];
+            if (category) {
+                filteredProducts = [...new Set(allData.filter(d => d.구분 === category).map(d => d.품명1).filter(Boolean))].sort();
+            } else {
+                filteredProducts = [...new Set(allData.map(d => d.품명1).filter(Boolean))].sort();
+            }
+            
+            filteredProducts.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p; opt.textContent = p;
+                select.appendChild(opt);
+            });
+        }
+
+        function performSearch() {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            const category = document.getElementById('categoryDropdown').value;
+            const product = document.getElementById('productDropdown').value;
+
+            let filtered = allData.filter(d => {
+                const dDate = new Date(d.작성일자);
+                const dateMatch = (!start || dDate >= new Date(start)) && (!end || dDate <= new Date(end));
+                const catMatch = !category || d.구분 === category;
+                return dateMatch && catMatch;
+            }).sort((a, b) => new Date(a.작성일자) - new Date(b.작성일자));
+
+            if (product) {
+                filtered = filtered.filter(d => d.품명1 === product);
+                if (filtered.length > 0) {
+                    renderChart(filtered);
+                    document.getElementById('chartSection').style.display = 'block';
+                    renderTable(filtered, true);
+                    updateSummary(filtered, true);
+                }
+            } else {
+                document.getElementById('chartSection').style.display = 'none';
+                renderTable(filtered, false);
+                updateSummary(filtered, false);
+            }
+        }
+
+        function renderChart(data) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            if (priceChartInstance) priceChartInstance.destroy();
+
+            const prices = data.map(d => d.실단가 || 0);
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+            
+            // Y축 최적화: 최저가보다 10% 낮은 지점부터 시작
+            const yMin = Math.floor(minPrice * 0.9);
+
+            priceChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.작성일자),
+                    datasets: [{
+                        label: '실단가 (₩)',
+                        data: prices,
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: '#3b82f6',
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        title: { display: true, text: `[${data[0].품명1}] 단가 변동 흐름`, color: '#fff', font: { size: 16, weight: 'bold' } },
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { 
+                            min: yMin,
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { 
+                                color: '#94a3b8',
+                                callback: value => '₩' + value.toLocaleString()
+                            }
+                        },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        }
+
+        function renderTable(data, isDetail) {
+            const thead = document.getElementById('tableHead');
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            if (isDetail) {
+                thead.innerHTML = `<tr><th>일자</th><th>구매처</th><th>품명1</th><th style="text-align:right;">입고량</th><th style="text-align:right;">실단가</th><th style="text-align:center;">전기 대비</th><th style="text-align:right;">금액</th></tr>`;
+            } else {
+                thead.innerHTML = `<tr><th>일자</th><th>구분</th><th>문서번호</th><th>품명1</th><th>구매처</th><th style="text-align:right;">수량</th><th style="text-align:right;">금액</th></tr>`;
+            }
+
+            const displayData = [...data].reverse();
+            displayData.forEach(item => {
+                const tr = document.createElement('tr');
+                if (isDetail) {
+                    const idx = data.indexOf(item);
+                    const prev = idx > 0 ? data[idx - 1] : null;
+                    let diffHtml = '<span class="price-stable">-</span>';
+                    if (prev) {
+                        const d = (item.실단가 || 0) - (prev.실단가 || 0);
+                        if (d > 0) diffHtml = `<span class="price-up">▲ ₩${d.toLocaleString()}</span>`;
+                        else if (d < 0) diffHtml = `<span class="price-down">▼ ₩${Math.abs(d).toLocaleString()}</span>`;
+                    }
+                    tr.innerHTML = `<td>${item.작성일자}</td><td>${item.구매처}</td><td class="highlight">${item.품명1}</td><td style="text-align:right;">${(item.실입고량 || 0).toLocaleString()}</td><td style="text-align:right;">₩${(item.실단가 || 0).toLocaleString()}</td><td style="text-align:center;">${diffHtml}</td><td style="text-align:right;">₩${(item.금액 || 0).toLocaleString()}</td>`;
+                } else {
+                    const badge = item.구분 === '밸리데이션' ? 'badge-validation' : 'badge-raw';
+                    const dateLink = `<span class="doc-link" onclick="openDateModal('${item.작성일자}')">${item.작성일자}</span>`;
+                    tr.innerHTML = `<td>${dateLink}</td><td><span class="${badge}">${item.구분}</span></td><td>${item.문서번호 || '-'}</td><td class="highlight">${item.품명1}</td><td>${item.구매처}</td><td style="text-align:right;">${(item.수량 || 0).toLocaleString()}</td><td style="text-align:right;">₩${(item.금액 || 0).toLocaleString()}</td>`;
+                }
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateSummary(data, isDetail) {
+            const count = data.length;
+            const total = data.reduce((sum, d) => sum + (d.금액 || 0), 0);
+            const vendors = [...new Set(data.map(d => d.구매처).filter(Boolean))].sort();
+            
+            // 평균 실단가 계산
+            let avgPrice = 0;
+            if (count > 0) {
+                const priceSum = data.reduce((sum, d) => sum + (d.실단가 || 0), 0);
+                avgPrice = Math.round(priceSum / count);
+            }
+
+            document.getElementById('sum-count').innerText = count.toLocaleString() + '건';
+            document.getElementById('sum-total').innerText = '₩' + total.toLocaleString();
+            document.getElementById('sum-avg').innerText = '₩' + avgPrice.toLocaleString();
+            document.getElementById('sum-vendors').innerText = vendors.length > 0 ? vendors.join(', ') : '-';
+        }
+
+        init();
+
+        // ── Modal Functions ──
+        function openDateModal(date) {
+            const modal = document.getElementById('doc-modal');
+            document.getElementById('modal-doc-title').innerText = `[${date}] 상세 내역`;
+            const tbody = document.getElementById('modal-tbody');
+            
+            // 필터링: 작성일자가 일치하는 모든 데이터
+            const filtered = allData.filter(d => d.작성일자 === date);
+            
+            tbody.innerHTML = filtered.map(item => {
+                return `
+                    <tr>
+                        <td style="white-space:nowrap;">${item.작성일자 || '-'}</td>
+                        <td style="color:#cbd5e1;">${item.작성자 || '-'}</td>
+                        <td style="font-family:monospace; font-size:0.8rem; color:#60a5fa;">${item.cat_no || '-'}</td>
+                        <td style="color:#cbd5e1;">${item.제조사 || '-'}</td>
+                        <td class="highlight">${item.구매처 || '-'}</td>
+                        <td style="color:#cbd5e1;">${item.규격 || '-'}</td>
+                        <td style="text-align:center; color:#94a3b8;">${item.단위 || '-'}</td>
+                        <td style="text-align:right; font-weight:600;">${(item.수량 || 0).toLocaleString()}</td>
+                        <td style="text-align:right; color:#94a3b8;">₩${(item.단가 || 0).toLocaleString()}</td>
+                        <td style="text-align:right; font-weight:700; color:var(--primary);">₩${(item.금액 || 0).toLocaleString()}</td>
+                        <td style="color:#cbd5e1;">${item.담당자 || '-'}</td>
+                        <td style="font-family:monospace; font-size:0.8rem;">${item.연락처 || '-'}</td>
+                        <td style="font-family:monospace; font-size:0.8rem; color:#94a3b8;">${item.email || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => modal.classList.add('show'));
+        }
+
+        function closeDocModal() {
+            const modal = document.getElementById('doc-modal');
+            modal.classList.remove('show');
+            setTimeout(() => { modal.style.display = 'none'; }, 200);
+        }
+    </script>
+
+    <!-- Document Detail Modal -->
+    <div id="doc-modal" class="modal-overlay" onclick="if(event.target===this) closeDocModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-file-invoice"></i> <span id="modal-doc-title">문서 상세 내역</span></h3>
+                <button class="modal-close" onclick="closeDocModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <table class="modal-table">
+                    <thead>
+                        <tr>
+                            <th>작성일자</th>
+                            <th>작성자</th>
+                            <th>Cat.No</th>
+                            <th>제조사</th>
+                            <th>구매처</th>
+                            <th>규격</th>
+                            <th style="text-align:center;">단위</th>
+                            <th style="text-align:right;">수량</th>
+                            <th style="text-align:right;">단가</th>
+                            <th style="text-align:right;">금액</th>
+                            <th>담당자</th>
+                            <th>연락처</th>
+                            <th>E-mail</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
