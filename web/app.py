@@ -94,6 +94,10 @@ def calibration():
 def purchase_dashboard():
     return render_template('purchase_dashboard.html')
 
+@app.route('/facilities')
+def facilities():
+    return render_template('facilities.html')
+
 @app.route('/api/purchase/info')
 def get_purchase_info():
     try:
@@ -124,6 +128,15 @@ def get_calibration_plan():
         data = response.data
         data.sort(key=lambda x: int(x['no']) if str(x['no']).isdigit() else 9999)
         return jsonify({"status": "success", "data": data})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/facilities')
+def get_facilities():
+    try:
+        supabase = get_supabase_client()
+        response = supabase.table('facilities').select('*').order('id').execute()
+        return jsonify({"status": "success", "data": response.data})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 

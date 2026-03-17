@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MES 통합 관리 시스템 - 설비 관리</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .filter-section {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .search-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-md);
+            color: #fff;
+            padding: 0.6rem 1rem;
+            min-width: 250px;
+        }
+        .table-container {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-lg);
+            overflow-x: auto;
+        }
+        .facilities-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .facilities-table th {
+            text-align: left;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            color: #94a3b8;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            white-space: nowrap;
+        }
+        .facilities-table td {
+            padding: 0.9rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #cbd5e1;
+        }
+        .facilities-table tr:hover {
+            background: rgba(59, 130, 246, 0.05);
+        }
+        .status-badge {
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-active { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+        .status-inactive { background: rgba(244, 63, 94, 0.15); color: #f43f5e; }
+        
+        #loading-overlay {
+            padding: 3rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <header class="top-header">
+        <a href="/" class="header-brand">
+            <img src="/static/img/logo.png" alt="Logo" class="brand-logo">
+            <span>생산관리팀 통합 관리</span>
+        </a>
+        <nav class="header-nav">
+            <a href="/" class="nav-btn">
+                <i class="fa-solid fa-house"></i>
+                재고현황
+            </a>
+            <a href="/material-info" class="nav-btn">
+                <i class="fa-solid fa-list-ul"></i>
+                안전재고
+            </a>
+            <a href="/purchase-dashboard" class="nav-btn">
+                <i class="fa-solid fa-chart-line"></i>
+                구매 대시보드
+            </a>
+            <a href="/facilities" class="nav-btn active">
+                <i class="fa-solid fa-tools"></i>
+                설비 관리
+            </a>
+            <a href="/inventory" class="nav-btn">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                원료상세검색
+            </a>
+            <a href="/raw-material" class="nav-btn">
+                <i class="fa-solid fa-flask"></i>
+                원재료관리
+            </a>
+            <a href="/producible" class="nav-btn">
+                <i class="fa-solid fa-flask-vial"></i>
+                생산가능수량
+            </a>
+            <a href="/production" class="nav-btn">
+                <i class="fa-solid fa-industry"></i>
+                생산 관리
+            </a>
+            <a href="/finished-product" class="nav-btn">
+                <i class="fa-solid fa-box"></i>
+                완제품관리
+            </a>
+            <a href="/validation" class="nav-btn">
+                <i class="fa-solid fa-clipboard-check"></i>
+                밸리데이션
+            </a>
+            <a href="/calibration" class="nav-btn">
+                <i class="fa-solid fa-compass-drafting"></i>
+                검교정
+            </a>
+            <a href="/upload-usage" class="nav-btn">
+                <i class="fa-solid fa-file-arrow-up"></i>
+                사용량 업로드
+            </a>
+            <a href="/upload-receiving" class="nav-btn">
+                <i class="fa-solid fa-file-import"></i>
+                입고 업로드
+            </a>
+        </nav>
+    </header>
+
+    <div class="main-content">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title"><i class="fa-solid fa-tools" style="color:var(--primary); margin-right: 0.5rem;"></i> 설비 관리</h1>
+                <p class="page-subtitle">공장 내 설비 목록 및 상태를 통합 관리합니다.</p>
+            </div>
+            <div id="stats-container" style="display:flex; gap: 1.5rem;">
+                <div class="stat-card" style="text-align:right;">
+                    <div style="font-size: 0.8rem; color: #94a3b8;">전체 설비</div>
+                    <div id="total-count" style="font-size: 1.5rem; font-weight:700; color: #fff;">0</div>
+                </div>
+                <div class="stat-card" style="text-align:right;">
+                    <div style="font-size: 0.8rem; color: #94a3b8;">사용 중</div>
+                    <div id="active-count" style="font-size: 1.5rem; font-weight:700; color: #10b981;">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-section glass-panel" style="padding: 1.5rem; display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: flex-end;">
+            <div style="flex: 1 1 150px; min-width: 150px;">
+                <label style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">설비번호</label>
+                <select id="no-filter" class="search-input" style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);"><option value="all">전체</option></select>
+            </div>
+            <div style="flex: 1 1 140px; min-width: 140px;">
+                <label style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">관리팀</label>
+                <select id="team-filter" class="search-input" style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);"><option value="all">전체</option></select>
+            </div>
+            <div style="flex: 1 1 120px; min-width: 120px;">
+                <label style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">구분</label>
+                <select id="class-filter" class="search-input" style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);"><option value="all">전체</option></select>
+            </div>
+            <div style="flex: 1 1 110px; min-width: 110px;">
+                <label style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">구입년도</label>
+                <select id="year-filter" class="search-input" style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);"><option value="all">전체</option></select>
+            </div>
+            <div style="flex: 1 1 100px; min-width: 100px;">
+                <label style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">상태</label>
+                <select id="status-filter" class="search-input" style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);"><option value="all">전체</option></select>
+            </div>
+            <div style="flex: 1 1 90px; min-width: 90px;">
+                <label style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">등급</label>
+                <select id="grade-filter" class="search-input" style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);"><option value="all">전체</option></select>
+            </div>
+            <div style="flex: 0 0 auto;">
+                <button id="search-btn" class="nav-btn" style="padding: 0 2rem; height: 45px; background: var(--primary); color: #fff; border: none; display: flex; align-items: center; justify-content: center; gap: 0.6rem; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                    <i class="fa-solid fa-magnifying-glass"></i> 검색
+                </button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="facilities-table">
+                <thead>
+                    <tr>
+                        <th>설비번호</th>
+                        <th>장비명</th>
+                        <th>구분</th>
+                        <th>설치장소</th>
+                        <th>관리팀</th>
+                        <th>상태</th>
+                        <th>등급</th>
+                        <th>검교정</th>
+                        <th>밸리</th>
+                        <th>제작회사</th>
+                        <th>모델/제조번호</th>
+                        <th>구입일</th>
+                    </tr>
+                </thead>
+                <tbody id="facilities-tbody">
+                    <tr>
+                        <td colspan="9" id="loading-overlay">
+                            <i class="fa-solid fa-circle-notch fa-spin"></i> 데이터를 불러오는 중입니다...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div id="pagination-controls" style="padding: 1rem; display: flex; justify-content: center; align-items: center; gap: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                <button id="prev-btn" class="nav-btn" style="padding: 0.5rem 1rem;"><i class="fa-solid fa-chevron-left"></i> 이전</button>
+                <span id="page-info" style="color: #94a3b8; font-size: 0.9rem;">1 / 1 페이지</span>
+                <button id="next-btn" class="nav-btn" style="padding: 0.5rem 1rem;">다음 <i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allFacilities = [];
+        let filteredFacilities = [];
+        let currentPage = 1;
+        const pageSize = 50;
+
+        async function loadFacilities() {
+            const tbody = document.getElementById('facilities-tbody');
+            try {
+                const res = await fetch('/api/facilities');
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    allFacilities = result.data;
+                    filteredFacilities = [...allFacilities];
+                    updateStats();
+                    initFilters();
+                    renderPage(1);
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:2rem; color:#f43f5e;">에러: ${result.message}</td></tr>`;
+                }
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:2rem; color:#f43f5e;">데이터를 불러올 수 없습니다.</td></tr>`;
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('total-count').innerText = allFacilities.length;
+            const activeCount = allFacilities.filter(f => f.status === '사용중').length;
+            document.getElementById('active-count').innerText = activeCount;
+        }
+
+        function initFilters() {
+            const unique = (key) => [...new Set(allFacilities.map(f => f[key]).filter(v => v))].sort();
+            
+            // Populate Dropdowns
+            const populate = (id, values) => {
+                const el = document.getElementById(id);
+                // Keep the 'all' option
+                el.innerHTML = '<option value="all">전체</option>';
+                values.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = opt.innerText = v;
+                    el.appendChild(opt);
+                });
+            };
+
+            populate('no-filter', unique('facility_no'));
+            populate('team-filter', unique('management_team'));
+            populate('class-filter', unique('equipment_class'));
+            populate('status-filter', unique('status'));
+            populate('grade-filter', unique('facility_grade'));
+            
+            // Year filter specially
+            const years = [...new Set(allFacilities.map(f => f.purchase_date ? f.purchase_date.substring(0, 4) : null).filter(v => v))].sort().reverse();
+            populate('year-filter', years);
+        }
+
+        function filterData() {
+            const fNo = document.getElementById('no-filter').value;
+            const team = document.getElementById('team-filter').value;
+            const eClass = document.getElementById('class-filter').value;
+            const year = document.getElementById('year-filter').value;
+            const status = document.getElementById('status-filter').value;
+            const grade = document.getElementById('grade-filter').value;
+
+            filteredFacilities = allFacilities.filter(f => {
+                const matchesNo = fNo === 'all' || f.facility_no === fNo;
+                const matchesTeam = team === 'all' || f.management_team === team;
+                const matchesClass = eClass === 'all' || f.equipment_class === eClass;
+                const matchesYear = year === 'all' || (f.purchase_date && f.purchase_date.startsWith(year));
+                const matchesStatus = status === 'all' || f.status === status;
+                const matchesGrade = grade === 'all' || f.facility_grade === grade;
+                
+                return matchesNo && matchesTeam && matchesClass && matchesYear && matchesStatus && matchesGrade;
+            });
+
+            renderPage(1);
+        }
+
+        function renderPage(page) {
+            currentPage = page;
+            const tbody = document.getElementById('facilities-tbody');
+            tbody.innerHTML = '';
+
+            const totalPages = Math.ceil(filteredFacilities.length / pageSize) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+            const pageData = filteredFacilities.slice(start, end);
+
+            if (pageData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:2rem; color:#94a3b8;">검색 결과가 없습니다.</td></tr>';
+                document.getElementById('page-info').innerText = '0 / 0 페이지';
+                return;
+            }
+
+            pageData.forEach(item => {
+                const tr = document.createElement('tr');
+                const statusClass = item.status === '사용중' ? 'status-active' : 'status-inactive';
+                tr.innerHTML = `
+                    <td style="font-family:monospace; color:#60a5fa;">${item.facility_no || '-'}</td>
+                    <td style="font-weight:500;">${item.facility_name || '-'}</td>
+                    <td><span style="font-size:0.8rem; color:#94a3b8;">${item.equipment_class || '-'}</span></td>
+                    <td>${item.location || '-'}</td>
+                    <td><span style="font-size:0.85rem; background:rgba(255,255,255,0.05); padding:0.1rem 0.4rem; border-radius:4px;">${item.management_team || '-'}</span></td>
+                    <td><span class="status-badge ${statusClass}">${item.status || '-'}</span></td>
+                    <td><span style="color:${item.facility_grade === 'A' ? '#fbbf24' : '#94a3b8'}">${item.facility_grade || '-'}</span></td>
+                    <td style="text-align:center;">${item.calibration === 'O' ? '<i class="fa-solid fa-check" style="color:#10b981"></i>' : (item.calibration || '-')}</td>
+                    <td style="text-align:center;">${item.validation === 'O' ? '<i class="fa-solid fa-check" style="color:#10b981"></i>' : (item.validation || '-')}</td>
+                    <td>${item.manufacturer || '-'}</td>
+                    <td style="font-size:0.8rem; color:#94a3b8;">${item.serial_no || '-'}</td>
+                    <td>${item.purchase_date || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('page-info').innerText = `${currentPage} / ${totalPages} 페이지`;
+            document.getElementById('prev-btn').disabled = currentPage === 1;
+            document.getElementById('next-btn').disabled = currentPage === totalPages;
+        }
+
+        // Event Listeners
+        document.getElementById('search-btn').addEventListener('click', filterData);
+
+        document.getElementById('prev-btn').addEventListener('click', () => { if (currentPage > 1) renderPage(currentPage - 1); });
+        document.getElementById('next-btn').addEventListener('click', () => { 
+            const totalPages = Math.ceil(filteredFacilities.length / pageSize);
+            if (currentPage < totalPages) renderPage(currentPage + 1); 
+        });
+
+        window.onload = loadFacilities;
+
+        window.onload = loadFacilities;
+    </script>
+</body>
+</html>

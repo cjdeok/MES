@@ -54,3 +54,28 @@ CREATE TABLE IF NOT EXISTS finished_products (
     qc_info TEXT,
     remark TEXT
 );
+-- 5. 설비 관리 (보정 버전)
+DROP TABLE IF EXISTS facilities;
+CREATE TABLE facilities (
+    id SERIAL PRIMARY KEY,
+    management_team TEXT,
+    location TEXT,
+    status TEXT,
+    facility_no TEXT,
+    facility_name TEXT,
+    equipment_class TEXT,
+    facility_grade TEXT,
+    calibration TEXT,
+    validation TEXT,
+    department TEXT,
+    manager_primary TEXT,
+    manager_secondary TEXT,
+    specification TEXT,
+    manufacturer TEXT,
+    serial_no TEXT,
+    supplier TEXT,
+    as_contact TEXT,
+    purchase_date TEXT,
+    purchase_price BIGINT,
+    useful_life INTEGER
+);
