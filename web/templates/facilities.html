@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         .page-header {
             display: flex;
@@ -361,7 +362,7 @@
         </div>
 
         <div id="summary-section" class="glass-panel"
-            style="padding: 1.5rem; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem; border: 1px solid rgba(59, 130, 246, 0.2); background: rgba(30, 41, 59, 0.4);">
+            style="padding: 1.5rem; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.5rem; margin-bottom: 2rem; border: 1px solid rgba(59, 130, 246, 0.2); background: rgba(30, 41, 59, 0.4);">
             <div class="stat-card">
                 <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem; font-weight: 500;">설비 등록수</div>
                 <div id="summary-total-count" style="font-size: 1.4rem; font-weight: 700; color: #fff;">0 <span
@@ -380,6 +381,12 @@
             <div class="stat-card">
                 <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem; font-weight: 500;">잔존가치 합계</div>
                 <div id="summary-total-residual" style="font-size: 1.4rem; font-weight: 700; color: #10b981;">₩0</div>
+            </div>
+            <div class="stat-card" style="display:flex; flex-direction:column; justify-content:center; align-items:center; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 1rem;">
+                <button onclick="downloadDepreciationExcel()" class="nav-btn" style="width:100%; height:42px; background: #10b981; color:#fff; border:none; display:flex; align-items:center; justify-content:center; gap:0.5rem; font-weight:700; font-size:0.85rem; border-radius:8px; cursor:pointer; transition: all 0.2s;">
+                    <i class="fa-solid fa-file-excel"></i> 엑셀 다운로드
+                </button>
+                <div style="font-size:0.7rem; color:#94a3b8; margin-top:0.4rem;">(2014~현재 상세현황)</div>
             </div>
         </div>
 
@@ -467,28 +474,50 @@
                     return;
                 }
 
-                // 감가상각 계산 (정률법)
-                // r = 1 - (residual_ratio)^(1/n), n: 내용연수, residual_ratio: 보통 0.05(5%)
+                // 감가상각 계산 (정률법 - 엑셀 다운로드 로직과 통일)
                 const n = parseInt(item.useful_life) || 5;
-                const r = 1 - Math.pow(0.05, 1 / n);
-
                 const purchaseDate = new Date(item.purchase_date);
-                const elapsedYears = (today - purchaseDate) / (1000 * 60 * 60 * 24 * 365.25);
+                
+                // 상각률 (세무 기준 정률법)
+                let r = 0;
+                if (n === 5) r = 0.451;
+                else if (n === 6) r = 0.313;
+                else if (n === 12) r = 0.221;
+                else r = 1 - Math.pow(0.05, 1 / n);
 
-                if (elapsedYears <= 0) {
-                    totalResidual += cost;
+                const pYear = purchaseDate.getFullYear();
+                const pMonth = purchaseDate.getMonth() + 1;
+                const currentYear = today.getFullYear();
+
+                let bv = cost;
+                const minResidual = cost * 0.05;
+
+                if (purchaseDate > today) {
+                    bv = cost;
                 } else {
-                    // t년 후 잔존가치 = 취득가액 * (1-r)^t
-                    // 단, 내용연수가 지나더라도 보통 최소 잔존가액(5%)은 남김
-                    let currentBV = cost * Math.pow(1 - r, Math.min(elapsedYears, n));
+                    for (let y = pYear; y <= currentYear; y++) {
+                        if (bv <= minResidual) {
+                            bv = minResidual;
+                            break;
+                        }
 
-                    // 내용연수 이후에도 5% 미만으로 떨어지지 않게 보정 (보통 세무 기준)
-                    const minResidual = cost * 0.05;
-                    if (currentBV < minResidual) currentBV = minResidual;
+                        let dep = 0;
+                        if (y === pYear) {
+                            const months = 12 - pMonth + 1;
+                            dep = cost * r * (months / 12);
+                        } else {
+                            dep = bv * r;
+                        }
 
-                    totalResidual += currentBV;
-                    totalDepreciation += (cost - currentBV);
+                        if (bv - dep < minResidual) {
+                            dep = bv - minResidual;
+                        }
+                        bv -= dep;
+                    }
                 }
+
+                totalResidual += bv;
+                totalDepreciation += (cost - bv);
             });
 
             document.getElementById('summary-total-count').innerHTML = `${targetData.length} <span style="font-size:0.9rem; font-weight:400; color:#94a3b8;">건</span>`;
@@ -588,6 +617,106 @@
             document.getElementById('page-info').innerText = `${currentPage} / ${totalPages} 페이지`;
             document.getElementById('prev-btn').disabled = currentPage === 1;
             document.getElementById('next-btn').disabled = currentPage === totalPages;
+        }
+
+        // ── 엑셀 다운로드 기능 (감가상각 연도별 현황) ──
+        function downloadDepreciationExcel() {
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth() + 1;
+            const startYear = 2014;
+            
+            // 엑셀 헤더 설정
+            const header = [
+                '관리번호', '품명', '구입일', '취득가액', '내용연수', '상각률'
+            ];
+            // 연도별 헤더 추가
+            for (let y = startYear; y <= currentYear; y++) {
+                header.push(`${y}년`);
+            }
+            header.push(`${currentYear}년 잔존가치`);
+
+            const rows = [header];
+
+            filteredFacilities.forEach(item => {
+                const cost = parseFloat(item.purchase_price) || 0;
+                const n = parseInt(item.useful_life) || 5;
+                const purchaseDate = item.purchase_date ? new Date(item.purchase_date) : null;
+                
+                // 상각률 계산 (이미지의 수치를 최대한 참조)
+                // 5년: 0.451, 6년: 0.313, 12년: 0.221 등 정률법 상각률표 기준
+                let r = 0;
+                if (n === 5) r = 0.451;
+                else if (n === 6) r = 0.313;
+                else if (n === 12) r = 0.221;
+                else r = 1 - Math.pow(0.05, 1 / n); // fallback (5% 잔존가치 기준)
+                
+                const row = [
+                    item.facility_no || '',
+                    item.facility_name || '',
+                    item.purchase_date || '',
+                    cost,
+                    n,
+                    parseFloat(r.toFixed(3))
+                ];
+
+                let currentBV = cost;
+                let annualDepreciations = {};
+
+                if (purchaseDate && cost > 0) {
+                    const pYear = purchaseDate.getFullYear();
+                    const pMonth = purchaseDate.getMonth() + 1;
+                    
+                    let bv = cost;
+                    for (let y = pYear; y <= currentYear; y++) {
+                        if (bv <= cost * 0.05) { // 5% 잔존가액 미만이면 정지
+                            annualDepreciations[y] = 0;
+                            continue;
+                        }
+
+                        let dep = 0;
+                        if (y === pYear) {
+                            // 첫 해 월할 상각: 취득가액 * 상각률 * (사용월수 / 12)
+                            const months = 12 - pMonth + 1;
+                            dep = cost * r * (months / 12);
+                        } else {
+                            // 차년도 이후: 기말 잔액 * 상각률
+                            dep = bv * r;
+                        }
+
+                        // 잔존가액 5% 보정
+                        if (bv - dep < cost * 0.05) {
+                            dep = bv - (cost * 0.05);
+                        }
+                        
+                        annualDepreciations[y] = Math.round(dep);
+                        bv -= dep;
+                    }
+                    currentBV = bv;
+                }
+
+                // 각 연도별 데이터 채우기
+                for (let y = startYear; y <= currentYear; y++) {
+                    row.push(annualDepreciations[y] || 0);
+                }
+                row.push(Math.round(currentBV));
+                rows.push(row);
+            });
+
+            // Workbook 생성 및 다운로드
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            
+            // 컬럼 너비 조정
+            const wscols = [
+                {wch: 15}, {wch: 25}, {wch: 12}, {wch: 12}, {wch: 8}, {wch: 8}
+            ];
+            for (let i = 0; i <= (currentYear - startYear + 1); i++) wscols.push({wch: 10});
+            ws['!cols'] = wscols;
+
+            XLSX.utils.book_append_sheet(wb, ws, "감가상각 현황");
+            const filename = `설비_감가상각_현황_${today.toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(wb, filename);
         }
 
         // Event Listeners
