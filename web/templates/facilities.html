@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,12 +15,14 @@
             align-items: center;
             margin-bottom: 2rem;
         }
+
         .filter-section {
             display: flex;
             gap: 1rem;
             margin-bottom: 1.5rem;
             flex-wrap: wrap;
         }
+
         .search-input {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -28,17 +31,20 @@
             padding: 0.6rem 1rem;
             min-width: 250px;
         }
+
         .table-container {
             background: rgba(15, 23, 42, 0.4);
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: var(--radius-lg);
             overflow-x: auto;
         }
+
         .facilities-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.9rem;
         }
+
         .facilities-table th {
             text-align: left;
             padding: 1rem;
@@ -48,30 +54,173 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             white-space: nowrap;
         }
+
         .facilities-table td {
             padding: 0.9rem 1rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             color: #cbd5e1;
         }
+
         .facilities-table tr:hover {
             background: rgba(59, 130, 246, 0.05);
         }
+
         .status-badge {
             padding: 0.2rem 0.5rem;
             border-radius: 4px;
             font-size: 0.75rem;
             font-weight: 600;
         }
-        .status-active { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-        .status-inactive { background: rgba(244, 63, 94, 0.15); color: #f43f5e; }
-        
+
+        .status-active {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
+
+        .status-inactive {
+            background: rgba(244, 63, 94, 0.15);
+            color: #f43f5e;
+        }
+
         #loading-overlay {
             padding: 3rem;
             text-align: center;
             color: var(--text-muted);
         }
+
+        /* 설비 이력 카드 모달 스타일 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .modal-card {
+            background: #fff;
+            color: #333;
+            width: 100%;
+            max-width: 800px;
+            max-height: 95vh;
+            border-radius: 4px;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            font-size: 2rem;
+            color: #999;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .history-card-container {
+            padding: 2.5rem;
+            font-family: 'Malgun Gothic', 'Dotum', sans-serif;
+        }
+
+        .history-card-header {
+            background: #f8cbad;
+            padding: 0.75rem;
+            text-align: center;
+            border: 2px solid #000;
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .history-card-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+        }
+
+        .history-card-table th,
+        .history-card-table td {
+            height: 45px;
+            border: 1px solid #000;
+            padding: 0.5rem;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        .history-card-table th {
+            background: #f2f2f2;
+            color: #000;
+            font-weight: 800;
+            /* 더 찐하게 */
+            width: 18%;
+            /* 레이블 너비 조정 */
+        }
+
+        .history-card-table td {
+            width: 32%;
+            /* 정보 값 너비 조정 */
+            color: #333;
+        }
+
+        .history-card-photo-box {
+            width: 50% !important;
+            /* 사진 영역 전체의 반 */
+            height: 520px !important;
+            padding: 5px !important;
+            background: #fff;
+        }
+
+        .history-card-photo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .history-card-footer-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+            border-top: none;
+        }
+
+        .history-card-footer-table th,
+        .history-card-footer-table td {
+            border: 1px solid #000;
+            height: 40px;
+            text-align: center;
+        }
+
+        .history-card-footer-table th {
+            background: #f2f2f2;
+        }
+
+        .clickable-no {
+            color: #60a5fa;
+            cursor: pointer;
+            text-decoration: underline;
+            font-weight: 600;
+        }
+
+        .clickable-no:hover {
+            color: #3b82f6;
+        }
     </style>
 </head>
+
 <body>
     <header class="top-header">
         <a href="/" class="header-brand">
@@ -137,7 +286,8 @@
     <div class="main-content">
         <div class="page-header">
             <div>
-                <h1 class="page-title"><i class="fa-solid fa-tools" style="color:var(--primary); margin-right: 0.5rem;"></i> 설비 관리</h1>
+                <h1 class="page-title"><i class="fa-solid fa-tools"
+                        style="color:var(--primary); margin-right: 0.5rem;"></i> 설비 관리</h1>
                 <p class="page-subtitle">공장 내 설비 목록 및 상태를 통합 관리합니다.</p>
             </div>
             <div id="stats-container" style="display:flex; gap: 1.5rem;">
@@ -152,35 +302,84 @@
             </div>
         </div>
 
-        <div class="filter-section glass-panel" style="padding: 1.5rem; display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: flex-end;">
+        <div class="filter-section glass-panel"
+            style="padding: 1.5rem; display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: flex-end;">
             <div style="flex: 1 1 150px; min-width: 150px;">
-                <label style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">설비번호</label>
-                <select id="no-filter" class="search-input" style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);"><option value="all">전체</option></select>
+                <label
+                    style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">설비번호</label>
+                <select id="no-filter" class="search-input"
+                    style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);">
+                    <option value="all">전체</option>
+                </select>
             </div>
             <div style="flex: 1 1 140px; min-width: 140px;">
-                <label style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">관리팀</label>
-                <select id="team-filter" class="search-input" style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);"><option value="all">전체</option></select>
+                <label
+                    style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">관리팀</label>
+                <select id="team-filter" class="search-input"
+                    style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);">
+                    <option value="all">전체</option>
+                </select>
             </div>
             <div style="flex: 1 1 120px; min-width: 120px;">
-                <label style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">구분</label>
-                <select id="class-filter" class="search-input" style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);"><option value="all">전체</option></select>
+                <label
+                    style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">구분</label>
+                <select id="class-filter" class="search-input"
+                    style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);">
+                    <option value="all">전체</option>
+                </select>
             </div>
             <div style="flex: 1 1 110px; min-width: 110px;">
-                <label style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">구입년도</label>
-                <select id="year-filter" class="search-input" style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);"><option value="all">전체</option></select>
+                <label
+                    style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">구입년도</label>
+                <select id="year-filter" class="search-input"
+                    style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);">
+                    <option value="all">전체</option>
+                </select>
             </div>
             <div style="flex: 1 1 100px; min-width: 100px;">
-                <label style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">상태</label>
-                <select id="status-filter" class="search-input" style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);"><option value="all">전체</option></select>
+                <label
+                    style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">상태</label>
+                <select id="status-filter" class="search-input"
+                    style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);">
+                    <option value="all">전체</option>
+                </select>
             </div>
             <div style="flex: 1 1 90px; min-width: 90px;">
-                <label style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">등급</label>
-                <select id="grade-filter" class="search-input" style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);"><option value="all">전체</option></select>
+                <label
+                    style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.6rem; font-weight:600;">등급</label>
+                <select id="grade-filter" class="search-input"
+                    style="width:100%; height:45px; background-color: rgba(15, 23, 42, 0.6);">
+                    <option value="all">전체</option>
+                </select>
             </div>
             <div style="flex: 0 0 auto;">
-                <button id="search-btn" class="nav-btn" style="padding: 0 2rem; height: 45px; background: var(--primary); color: #fff; border: none; display: flex; align-items: center; justify-content: center; gap: 0.6rem; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                <button id="search-btn" class="nav-btn"
+                    style="padding: 0 2.5rem; height: 45px; background: var(--primary); color: #fff; border: none; display: flex; align-items: center; justify-content: center; gap: 0.7rem; font-weight: 800; font-size: 1.1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);">
                     <i class="fa-solid fa-magnifying-glass"></i> 검색
                 </button>
+            </div>
+        </div>
+
+        <div id="summary-section" class="glass-panel"
+            style="padding: 1.5rem; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem; border: 1px solid rgba(59, 130, 246, 0.2); background: rgba(30, 41, 59, 0.4);">
+            <div class="stat-card">
+                <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem; font-weight: 500;">설비 등록수</div>
+                <div id="summary-total-count" style="font-size: 1.4rem; font-weight: 700; color: #fff;">0 <span
+                        style="font-size:0.9rem; font-weight:400; color:#94a3b8;">건</span></div>
+            </div>
+            <div class="stat-card">
+                <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem; font-weight: 500;">구입총금액</div>
+                <div id="summary-total-price" style="font-size: 1.4rem; font-weight: 700; color: #3b82f6;">₩0</div>
+            </div>
+            <div class="stat-card">
+                <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem; font-weight: 500;">감가상각비 (누계)
+                </div>
+                <div id="summary-total-depreciation" style="font-size: 1.4rem; font-weight: 700; color: #f43f5e;">₩0
+                </div>
+            </div>
+            <div class="stat-card">
+                <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem; font-weight: 500;">잔존가치 합계</div>
+                <div id="summary-total-residual" style="font-size: 1.4rem; font-weight: 700; color: #10b981;">₩0</div>
             </div>
         </div>
 
@@ -204,16 +403,19 @@
                 </thead>
                 <tbody id="facilities-tbody">
                     <tr>
-                        <td colspan="9" id="loading-overlay">
+                        <td colspan="12" id="loading-overlay" style="text-align:center; padding:3rem;">
                             <i class="fa-solid fa-circle-notch fa-spin"></i> 데이터를 불러오는 중입니다...
                         </td>
                     </tr>
                 </tbody>
             </table>
-            <div id="pagination-controls" style="padding: 1rem; display: flex; justify-content: center; align-items: center; gap: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
-                <button id="prev-btn" class="nav-btn" style="padding: 0.5rem 1rem;"><i class="fa-solid fa-chevron-left"></i> 이전</button>
+            <div id="pagination-controls"
+                style="padding: 1rem; display: flex; justify-content: center; align-items: center; gap: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                <button id="prev-btn" class="nav-btn" style="padding: 0.5rem 1rem;"><i
+                        class="fa-solid fa-chevron-left"></i> 이전</button>
                 <span id="page-info" style="color: #94a3b8; font-size: 0.9rem;">1 / 1 페이지</span>
-                <button id="next-btn" class="nav-btn" style="padding: 0.5rem 1rem;">다음 <i class="fa-solid fa-chevron-right"></i></button>
+                <button id="next-btn" class="nav-btn" style="padding: 0.5rem 1rem;">다음 <i
+                        class="fa-solid fa-chevron-right"></i></button>
             </div>
         </div>
     </div>
@@ -233,9 +435,8 @@
                 if (result.status === 'success') {
                     allFacilities = result.data;
                     filteredFacilities = [...allFacilities];
-                    updateStats();
                     initFilters();
-                    renderPage(1);
+                    updateUI(); // Stats + List
                 } else {
                     tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:2rem; color:#f43f5e;">에러: ${result.message}</td></tr>`;
                 }
@@ -244,19 +445,68 @@
             }
         }
 
-        function updateStats() {
-            document.getElementById('total-count').innerText = allFacilities.length;
-            const activeCount = allFacilities.filter(f => f.status === '사용중').length;
+        function updateUI() {
+            updateSummary();
+            renderPage(1);
+        }
+
+        function updateSummary() {
+            const targetData = filteredFacilities;
+            const today = new Date();
+
+            let totalPrice = 0;
+            let totalDepreciation = 0;
+            let totalResidual = 0;
+
+            targetData.forEach(item => {
+                const cost = parseFloat(item.purchase_price) || 0;
+                totalPrice += cost;
+
+                if (cost <= 0 || !item.purchase_date || !item.useful_life) {
+                    totalResidual += cost;
+                    return;
+                }
+
+                // 감가상각 계산 (정률법)
+                // r = 1 - (residual_ratio)^(1/n), n: 내용연수, residual_ratio: 보통 0.05(5%)
+                const n = parseInt(item.useful_life) || 5;
+                const r = 1 - Math.pow(0.05, 1 / n);
+
+                const purchaseDate = new Date(item.purchase_date);
+                const elapsedYears = (today - purchaseDate) / (1000 * 60 * 60 * 24 * 365.25);
+
+                if (elapsedYears <= 0) {
+                    totalResidual += cost;
+                } else {
+                    // t년 후 잔존가치 = 취득가액 * (1-r)^t
+                    // 단, 내용연수가 지나더라도 보통 최소 잔존가액(5%)은 남김
+                    let currentBV = cost * Math.pow(1 - r, Math.min(elapsedYears, n));
+
+                    // 내용연수 이후에도 5% 미만으로 떨어지지 않게 보정 (보통 세무 기준)
+                    const minResidual = cost * 0.05;
+                    if (currentBV < minResidual) currentBV = minResidual;
+
+                    totalResidual += currentBV;
+                    totalDepreciation += (cost - currentBV);
+                }
+            });
+
+            document.getElementById('summary-total-count').innerHTML = `${targetData.length} <span style="font-size:0.9rem; font-weight:400; color:#94a3b8;">건</span>`;
+            document.getElementById('summary-total-price').innerText = `₩${Math.round(totalPrice).toLocaleString()}`;
+            document.getElementById('summary-total-depreciation').innerText = `₩${Math.round(totalDepreciation).toLocaleString()}`;
+            document.getElementById('summary-total-residual').innerText = `₩${Math.round(totalResidual).toLocaleString()}`;
+
+            // 상단 요약도 업데이트
+            document.getElementById('total-count').innerText = targetData.length;
+            const activeCount = targetData.filter(f => f.status === '사용중').length;
             document.getElementById('active-count').innerText = activeCount;
         }
 
         function initFilters() {
             const unique = (key) => [...new Set(allFacilities.map(f => f[key]).filter(v => v))].sort();
-            
-            // Populate Dropdowns
+
             const populate = (id, values) => {
                 const el = document.getElementById(id);
-                // Keep the 'all' option
                 el.innerHTML = '<option value="all">전체</option>';
                 values.forEach(v => {
                     const opt = document.createElement('option');
@@ -270,8 +520,7 @@
             populate('class-filter', unique('equipment_class'));
             populate('status-filter', unique('status'));
             populate('grade-filter', unique('facility_grade'));
-            
-            // Year filter specially
+
             const years = [...new Set(allFacilities.map(f => f.purchase_date ? f.purchase_date.substring(0, 4) : null).filter(v => v))].sort().reverse();
             populate('year-filter', years);
         }
@@ -291,11 +540,11 @@
                 const matchesYear = year === 'all' || (f.purchase_date && f.purchase_date.startsWith(year));
                 const matchesStatus = status === 'all' || f.status === status;
                 const matchesGrade = grade === 'all' || f.facility_grade === grade;
-                
+
                 return matchesNo && matchesTeam && matchesClass && matchesYear && matchesStatus && matchesGrade;
             });
 
-            renderPage(1);
+            updateUI();
         }
 
         function renderPage(page) {
@@ -320,7 +569,7 @@
                 const tr = document.createElement('tr');
                 const statusClass = item.status === '사용중' ? 'status-active' : 'status-inactive';
                 tr.innerHTML = `
-                    <td style="font-family:monospace; color:#60a5fa;">${item.facility_no || '-'}</td>
+                    <td class="clickable-no" onclick="showHistoryCard(${item.id})">${item.facility_no || '-'}</td>
                     <td style="font-weight:500;">${item.facility_name || '-'}</td>
                     <td><span style="font-size:0.8rem; color:#94a3b8;">${item.equipment_class || '-'}</span></td>
                     <td>${item.location || '-'}</td>
@@ -345,14 +594,147 @@
         document.getElementById('search-btn').addEventListener('click', filterData);
 
         document.getElementById('prev-btn').addEventListener('click', () => { if (currentPage > 1) renderPage(currentPage - 1); });
-        document.getElementById('next-btn').addEventListener('click', () => { 
+        document.getElementById('next-btn').addEventListener('click', () => {
             const totalPages = Math.ceil(filteredFacilities.length / pageSize);
-            if (currentPage < totalPages) renderPage(currentPage + 1); 
+            if (currentPage < totalPages) renderPage(currentPage + 1);
         });
 
         window.onload = loadFacilities;
+    </script>
 
-        window.onload = loadFacilities;
+    <!-- 설비 이력 카드 모달 -->
+    <div id="modal-overlay" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 1000px;">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <div class="history-card-container">
+                <div class="history-card-header">설 비 이 력 카 드</div>
+                <table class="history-card-table">
+                    <tr>
+                        <th colspan="2" style="width:50%;">설비사진(IMAGE)</th>
+                        <th style="background:#f2f2f2;">장비명</th>
+                        <td id="modal-name" style="text-align:left; padding-left:1rem; font-weight:700; color:#000;">-
+                        </td>
+                    </tr>
+                    <tr>
+                        <td rowspan="8" colspan="2" class="history-card-photo-box">
+                            <img id="modal-photo" src="" alt="설비 사진">
+                        </td>
+                        <th style="background:#f2f2f2;">설비번호</th>
+                        <td style="padding:0;">
+                            <div style="display:flex; height:100%;">
+                                <div id="modal-no"
+                                    style="flex:1; display:flex; align-items:center; justify-content:center; font-weight:700; color:#1e40af; border-right:1px solid #000;">
+                                    -</div>
+                                <div
+                                    style="width:100px; display:flex; align-items:center; justify-content:center; gap:5px; background:#f9fafb;">
+                                    <span style="font-weight:800; font-size:0.85rem; color:#000;">설비등급</span>
+                                    <span id="modal-grade"
+                                        style="font-weight:800; color:#000; border:1px solid #000; padding:1px 8px; background:#fff;">-</span>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th style="background:#f2f2f2;">제작회사</th>
+                        <td id="modal-manufacturer">-</td>
+                    </tr>
+                    <tr>
+                        <th style="background:#f2f2f2;">모델/제조번호</th>
+                        <td id="modal-serial">-</td>
+                    </tr>
+                    <tr>
+                        <th style="background:#f2f2f2;">구입사</th>
+                        <td id="modal-supplier">-</td>
+                    </tr>
+                    <tr>
+                        <th style="background:#f2f2f2;">A/S 연락처</th>
+                        <td id="modal-as">-</td>
+                    </tr>
+                    <tr>
+                        <th style="background:#f2f2f2;">구입일</th>
+                        <td id="modal-date">-</td>
+                    </tr>
+                    <tr>
+                        <th style="background:#f2f2f2;">구입가(단위: 원)</th>
+                        <td id="modal-price" style="text-align:right; padding-right:1.5rem; font-weight:600;">-</td>
+                    </tr>
+                    <tr>
+                        <th style="background:#f2f2f2;">설치장소</th>
+                        <td id="modal-location">-</td>
+                    </tr>
+                    <tr>
+                        <th colspan="2" style="background:#f2f2f2;">검교정</th>
+                        <td colspan="2" id="modal-calibration" style="font-family: 'Malgun Gothic';">유
+                            □&nbsp;&nbsp;&nbsp;무 ■</td>
+                    </tr>
+                    <tr>
+                        <th colspan="2" style="background:#f2f2f2;">밸리데이션</th>
+                        <td colspan="2" id="modal-validation" style="font-family: 'Malgun Gothic';">유
+                            ■&nbsp;&nbsp;&nbsp;무 □</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showHistoryCard(id) {
+            const item = allFacilities.find(f => f.id == id);
+            if (!item) return;
+
+            document.getElementById('modal-name').innerText = item.facility_name || '-';
+            document.getElementById('modal-no').innerText = item.facility_no || '-';
+            document.getElementById('modal-grade').innerText = item.facility_grade || 'N/A';
+            document.getElementById('modal-manufacturer').innerText = item.manufacturer || '-';
+            document.getElementById('modal-serial').innerText = item.serial_no || '-';
+            document.getElementById('modal-supplier').innerText = item.supplier || '-';
+            document.getElementById('modal-as').innerText = item.as_contact || '-';
+            document.getElementById('modal-date').innerText = item.purchase_date || '-';
+            document.getElementById('modal-price').innerText = item.purchase_price ? parseInt(item.purchase_price).toLocaleString() : 'N/A';
+            document.getElementById('modal-location').innerText = item.location || '-';
+
+            // 검교정/밸리데이션 표시
+            const cal = item.calibration === 'O' ? '유 ■&nbsp;&nbsp;&nbsp;무 □' : '유 □&nbsp;&nbsp;&nbsp;무 ■';
+            const val = item.validation === 'O' ? '유 ■&nbsp;&nbsp;&nbsp;무 □' : '유 □&nbsp;&nbsp;&nbsp;무 ■';
+            document.getElementById('modal-calibration').innerHTML = cal;
+            document.getElementById('modal-validation').innerHTML = val;
+
+            // 사진 연동 (Supabase Storage URL - qnpvqmqkknhxycpseqir 프로젝트로 수정)
+            const cleanNo = (item.facility_no || '').trim();
+            const storageBase = "https://qnpvqmqkknhxycpseqir.supabase.co/storage/v1/object/public/equipment-photos/";
+
+            const imgEl = document.getElementById('modal-photo');
+
+            // 시도할 파일명 리스트 (업로드 로그 상의 이중 확장자 가능성 포함)
+            const attempts = [
+                cleanNo + ".jpg",
+                cleanNo + ".png",
+                cleanNo + ".jpgjpg", // 로그에서 발견된 특이 케이스
+                cleanNo + ".pngjpg"
+            ];
+
+            let attemptIdx = 0;
+
+            const tryLoad = () => {
+                if (attemptIdx < attempts.length) {
+                    imgEl.src = storageBase + encodeURIComponent(attempts[attemptIdx]);
+                    attemptIdx++;
+                } else {
+                    imgEl.src = "/static/img/no-image.png"; // 모든 시도 실패 시
+                    imgEl.onerror = null;
+                }
+            };
+
+            imgEl.onerror = tryLoad;
+            tryLoad();
+
+            document.getElementById('modal-overlay').style.display = 'flex';
+        }
+
+        function closeModal(e) {
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
     </script>
 </body>
+
 </html>
