@@ -39,13 +39,33 @@ app.jinja_loader = ChoiceLoader([
 ])
 
 # 서버리스에서는 /tmp 디렉토리만 쓰기가 가능하지만, 여기선 단순 읽기 목적이므로 프로젝트 내 파일 참조
-JSON_FILE = os.path.join(BASE_DIR, 'data', 'material_master.json')
-THRESHOLD_FILE = os.path.join(BASE_DIR, 'data', 'inventory_thresholds.json')
+# find_data_file 정의 후 아래에서 설정됨 (L80 부근)
+JSON_FILE = ""
+THRESHOLD_FILE = ""
 
 def get_supabase_client() -> Client:
     if not SUPABASE_URL or not SUPABASE_KEY:
         raise Exception("Supabase 환경 변수가 설정되지 않았습니다.")
     return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+def find_data_file(relative_path):
+    """데이터 파일의 실제 위치를 찾는 헬퍼 함수 (로컬 및 Vercel 대응)"""
+    # 1. 원래 루트 기준 경로 (로컬)
+    path1 = os.path.normpath(os.path.join(BASE_DIR, 'data', relative_path))
+    if os.path.exists(path1):
+        return path1
+        
+    # 2. Vercel용 api 하위 경로
+    path2 = os.path.normpath(os.path.join(BASE_DIR, 'api', 'data', relative_path))
+    if os.path.exists(path2):
+        return path2
+        
+    # 기본값 반환
+    return path1
+
+# 서버리스에서는 /tmp 디렉토리만 쓰기가 가능하지만, 여기선 단순 읽기 목적이므로 프로젝트 내 파일 참조
+JSON_FILE = find_data_file('material_master.json')
+THRESHOLD_FILE = find_data_file('inventory_thresholds.json')
 
 @app.route('/')
 def index():
@@ -146,19 +166,19 @@ def get_red_cells_data(file_path):
 
 @app.route('/api/mo/red-cells')
 def api_mo_red_cells():
-    base_excel = os.path.normpath(os.path.join(BASE_DIR, 'data', 'mo', 'MO_RESULT.xlsx'))
+    base_excel = find_data_file(os.path.join('mo', 'MO_RESULT.xlsx'))
     red_cells = get_red_cells_data(base_excel)
     return jsonify({'status': 'success', 'data': red_cells})
 
 @app.route('/api/mo/generate', methods=['POST'])
 def api_mo_generate():
-    base_excel = os.path.normpath(os.path.join(BASE_DIR, 'data', 'mo', 'MO_RESULT.xlsx'))
+    base_excel = find_data_file(os.path.join('mo', 'MO_RESULT.xlsx'))
     recalc_script = r"C:\Users\ENS-1000\.gemini\skills\xlsx\scripts\recalc.py"
     
     if not os.path.exists(base_excel):
         return jsonify({
             'status': 'error', 
-            'message': f'Base MO Excel file not found at: {base_excel}',
+            'message': f'Base MO Excel file not found. Checked: {os.path.join(BASE_DIR, "data", "mo", "MO_RESULT.xlsx")} and {os.path.join(BASE_DIR, "api", "data", "mo", "MO_RESULT.xlsx")}',
             'cwd': os.getcwd(),
             'base_dir': BASE_DIR
         }), 404
@@ -278,7 +298,7 @@ def get_producible():
         import bisect
 
         # ── 1. BOM.xlsx 파싱 ──────────────────────────────────────
-        BOM_FILE = os.path.join(BASE_DIR, 'data', 'BOM.xlsx')
+        BOM_FILE = find_data_file('BOM.xlsx')
         wb = openpyxl.load_workbook(BOM_FILE, read_only=True, data_only=True)
         ws = wb.active
 
