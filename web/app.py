@@ -27,6 +27,11 @@ if os.environ.get('VERCEL'):
 else:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+print(f"--- SERVER STARTING ---")
+print(f"BASE_DIR: {BASE_DIR}")
+print(f"CWD: {os.getcwd()}")
+print(f"-----------------------")
+
 # 템플릿 검색 경로 설정 (루트 및 web/templates 동시 탐색)
 app.jinja_loader = ChoiceLoader([
     FileSystemLoader(BASE_DIR),
@@ -141,17 +146,22 @@ def get_red_cells_data(file_path):
 
 @app.route('/api/mo/red-cells')
 def api_mo_red_cells():
-    base_excel = os.path.join(BASE_DIR, 'data', 'mo', 'MO_RESULT.xlsx')
+    base_excel = os.path.normpath(os.path.join(BASE_DIR, 'data', 'mo', 'MO_RESULT.xlsx'))
     red_cells = get_red_cells_data(base_excel)
     return jsonify({'status': 'success', 'data': red_cells})
 
 @app.route('/api/mo/generate', methods=['POST'])
 def api_mo_generate():
-    base_excel = os.path.join(BASE_DIR, 'data', 'mo', 'MO_RESULT.xlsx')
+    base_excel = os.path.normpath(os.path.join(BASE_DIR, 'data', 'mo', 'MO_RESULT.xlsx'))
     recalc_script = r"C:\Users\ENS-1000\.gemini\skills\xlsx\scripts\recalc.py"
     
     if not os.path.exists(base_excel):
-        return jsonify({'status': 'error', 'message': 'Base MO Excel file not found.'}), 404
+        return jsonify({
+            'status': 'error', 
+            'message': f'Base MO Excel file not found at: {base_excel}',
+            'cwd': os.getcwd(),
+            'base_dir': BASE_DIR
+        }), 404
 
     # 임시 파일 경로 생성
     fd, temp_path = tempfile.mkstemp(suffix='.xlsx')
