@@ -135,6 +135,82 @@ body {
     color: #60a5fa;
 }
 
+/* ─── Navigation Dropdown ─── */
+.nav-dropdown {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.dropdown-content {
+    opacity: 0;
+    visibility: hidden;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 150px;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    z-index: 1001;
+    padding-top: 8px; /* 연결을 위한 투명 여백 (중요!) */
+    margin-top: -3px; /* 위 버튼과 살짝 겹치게 하여 틈새 제거 */
+    transform: translateY(10px);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+/* 실제 링크들이 담긴 컨테이너 - 배경색 적용 */
+.dropdown-content::before {
+    content: '';
+    position: absolute;
+    top: 8px; /* 위 padding만큼 띄움 */
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.95);
+    border-radius: var(--radius-sm);
+    z-index: -1;
+}
+
+.dropdown-content a {
+    color: var(--text-muted);
+    padding: 0.6rem 1rem;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.dropdown-content a i {
+    font-size: 0.85rem;
+    width: 14px;
+    text-align: center;
+}
+
+.dropdown-content a:hover {
+    background: rgba(59, 130, 246, 0.15);
+    color: #fff;
+}
+
+.dropdown-content a.active {
+    background: rgba(59, 130, 246, 0.1);
+    color: #fff;
+}
+
+.nav-dropdown:hover .dropdown-content {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
 /* ─── Layout Adjustment ─── */
 .app-container {
     width: 100%;

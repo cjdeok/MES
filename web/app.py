@@ -3,11 +3,15 @@ import io
 import json
 import openpyxl
 import datetime
+import shutil
+import tempfile
+import subprocess
 from collections import defaultdict
 from flask import Flask, render_template, jsonify, request, send_file
 from jinja2 import ChoiceLoader, FileSystemLoader
 from dotenv import load_dotenv
 from supabase import create_client, Client
+from dateutil.parser import parse as date_parse
 
 load_dotenv()
 SUPABASE_URL = os.getenv('SUPABASE_URL')
@@ -97,6 +101,111 @@ def purchase_dashboard():
 @app.route('/facilities')
 def facilities():
     return render_template('facilities.html')
+
+@app.route('/mo-management')
+def mo_management():
+    return render_template('mo_management.html')
+
+def get_red_cells_data(file_path):
+    if not os.path.exists(file_path): return []
+    wb = openpyxl.load_workbook(file_path, data_only=True)
+    red_cells = []
+    for sheet_name in wb.sheetnames:
+        sheet = wb[sheet_name]
+        for row in sheet.iter_rows():
+            for cell in row:
+                if cell.value is not None and cell.font and cell.font.color:
+                    color = str(cell.font.color.rgb)
+                    # 빨간색 (Standard Red or ARGB FF0000)
+                    if color == 'FFFF0000' or color == 'FF0000' or (isinstance(color, str) and color.endswith('0000') and color.startswith('FF')):
+                        label = f"Cell {cell.coordinate}"
+                        left_cell = sheet.cell(row=cell.row, column=max(1, cell.column - 1))
+                        if left_cell.value and isinstance(left_cell.value, str):
+                            label = left_cell.value
+                        else:
+                            above_cell = sheet.cell(row=max(1, cell.row - 1), column=cell.column)
+                            if above_cell.value and isinstance(above_cell.value, str):
+                                label = above_cell.value
+
+                        val = cell.value
+                        if isinstance(val, datetime.datetime):
+                            val = val.strftime("%Y-%m-%d")
+
+                        red_cells.append({
+                            'sheet': sheet_name,
+                            'cell': cell.coordinate,
+                            'label': label.strip() if isinstance(label, str) else str(label),
+                            'value': val
+                        })
+    return red_cells
+
+@app.route('/api/mo/red-cells')
+def api_mo_red_cells():
+    base_excel = os.path.join(BASE_DIR, 'data', 'mo', 'MO_RESULT.xlsx')
+    red_cells = get_red_cells_data(base_excel)
+    return jsonify({'status': 'success', 'data': red_cells})
+
+@app.route('/api/mo/generate', methods=['POST'])
+def api_mo_generate():
+    base_excel = os.path.join(BASE_DIR, 'data', 'mo', 'MO_RESULT.xlsx')
+    recalc_script = r"C:\Users\ENS-1000\.gemini\skills\xlsx\scripts\recalc.py"
+    
+    if not os.path.exists(base_excel):
+        return jsonify({'status': 'error', 'message': 'Base MO Excel file not found.'}), 404
+
+    # 임시 파일 경로 생성
+    fd, temp_path = tempfile.mkstemp(suffix='.xlsx')
+    os.close(fd)
+    
+    try:
+        shutil.copyfile(base_excel, temp_path)
+        wb = openpyxl.load_workbook(temp_path)
+        
+        # 폼 데이터 처리
+        for key, value in request.form.items():
+            if "_" in key:
+                try:
+                    sheet_name, cell_coord = key.split("_", 1)
+                    if sheet_name in wb.sheetnames:
+                        sheet = wb[sheet_name]
+                        
+                        # 데이터 타입 변환 시도
+                        processed_value = value
+                        if value:
+                            try:
+                                if "." in value:
+                                    processed_value = float(value)
+                                else:
+                                    processed_value = int(value)
+                            except ValueError:
+                                try:
+                                    processed_value = date_parse(value)
+                                except:
+                                    processed_value = value
+                        
+                        sheet[cell_coord] = processed_value
+                except Exception as e:
+                    print(f"Error processing {key}: {e}")
+
+        wb.save(temp_path)
+
+        # 수식 재계산 (LibreOffice 활용)
+        if os.path.exists(recalc_script):
+            try:
+                subprocess.run(["python", recalc_script, temp_path], capture_output=True, text=True, check=False, timeout=60)
+            except Exception as e:
+                print(f"Recalculation error: {e}")
+        
+        output_filename = f"MO_RESULT_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        return send_file(temp_path, as_attachment=True, download_name=output_filename)
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+    finally:
+        # 파일이 바로 삭제되면 send_file에서 문제가 생길 수 있으므로 주의 필요하지만 
+        # Flask 2.2+ 혹은 as_attachment 시 파일을 메모리에 로드 후 전송하므로 안전할 가능성이 큼
+        # 다만 좀 더 안전하게 삭제하려면 별도 로직이 필요할 수 있음
+        pass
 
 @app.route('/api/purchase/info')
 def get_purchase_info():

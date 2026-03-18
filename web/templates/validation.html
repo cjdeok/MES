@@ -55,10 +55,16 @@
                 <i class="fa-solid fa-flask-vial"></i>
                 생산가능수량
             </a>
-            <a href="/production" class="nav-btn">
-                <i class="fa-solid fa-industry"></i>
-                생산 관리
-            </a>
+                        <div class="nav-dropdown">
+                <a href="/production" class="nav-btn">
+                    <i class="fa-solid fa-industry"></i>
+                    생산 관리 <i class="fa-solid fa-chevron-down" style="font-size: 0.7rem; margin-left: 5px;"></i>
+                </a>
+                <div class="dropdown-content">
+                    <a href="/production"><i class="fa-solid fa-calculator"></i>생산 지시</a>
+                    <a href="/mo-management"><i class="fa-solid fa-file-contract"></i>MO 생성</a>
+                </div>
+            </div>
             <a href="/finished-product" class="nav-btn">
                 <i class="fa-solid fa-box"></i>
                 완제품관리
