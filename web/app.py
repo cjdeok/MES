@@ -217,6 +217,18 @@ def api_mo_generate():
         # 다만 좀 더 안전하게 삭제하려면 별도 로직이 필요할 수 있음
         pass
 
+@app.route('/api/debug/files')
+def debug_files():
+    files_tree = []
+    for root, dirs, files in os.walk(BASE_DIR):
+        for file in files:
+            files_tree.append(os.path.relpath(os.path.join(root, file), BASE_DIR))
+    return jsonify({
+        'base_dir': BASE_DIR,
+        'cwd': os.getcwd(),
+        'files': files_tree
+    })
+
 @app.route('/api/purchase/info')
 def get_purchase_info():
     try:
