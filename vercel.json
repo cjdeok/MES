@@ -15,11 +15,7 @@
   "functions": {
     "vercel_app.py": {
       "maxDuration": 30,
-      "includeFiles": [
-        "data/**",
-        "api/data/**",
-        "api/recalc.py"
-      ]
+      "includeFiles": "{data/**,api/data/**,api/recalc.py}"
     }
   }
 }
