@@ -50,18 +50,26 @@ def get_supabase_client() -> Client:
 
 def find_data_file(relative_path):
     """데이터 파일의 실제 위치를 찾는 헬퍼 함수 (로컬 및 Vercel 대응)"""
-    # 1. 원래 루트 기준 경로 (로컬)
-    path1 = os.path.normpath(os.path.join(BASE_DIR, 'data', relative_path))
-    if os.path.exists(path1):
-        return path1
-        
-    # 2. Vercel용 api 하위 경로
-    path2 = os.path.normpath(os.path.join(BASE_DIR, 'api', 'data', relative_path))
-    if os.path.exists(path2):
-        return path2
-        
-    # 기본값 반환
-    return path1
+    # 탐색할 후보 경로들
+    candidates = [
+        # 1. 원래 루트 기준 경로 (로컬)
+        os.path.normpath(os.path.join(BASE_DIR, 'data', relative_path)),
+        # 2. Vercel용 api 하위 경로
+        os.path.normpath(os.path.join(BASE_DIR, 'api', 'data', relative_path)),
+        # 3. 현재 파일 기준 상대 경로 (web/app.py 기준)
+        os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'data', relative_path)),
+        # 4. 현재 작업 디렉토리 기준
+        os.path.normpath(os.path.join(os.getcwd(), 'data', relative_path)),
+        os.path.normpath(os.path.join(os.getcwd(), 'api', 'data', relative_path)),
+    ]
+    
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+            
+    # 기본값 반환 하되 로그를 남김
+    print(f"Warning: Data file NOT found: {relative_path}. Tried: {candidates}")
+    return candidates[0]
 
 # 서버리스에서는 /tmp 디렉토리만 쓰기가 가능하지만, 여기선 단순 읽기 목적이므로 프로젝트 내 파일 참조
 JSON_FILE = find_data_file('material_master.json')
@@ -173,14 +181,32 @@ def api_mo_red_cells():
 @app.route('/api/mo/generate', methods=['POST'])
 def api_mo_generate():
     base_excel = find_data_file(os.path.join('mo', 'MO_RESULT.xlsx'))
-    recalc_script = r"C:\Users\ENS-1000\.gemini\skills\xlsx\scripts\recalc.py"
+    
+    # recalc.py 경로 수정 (api 폴더 내에 복사된 버전 사용)
+    # Vercel 환경에서는 BASE_DIR/api/recalc.py 또는 루트/api/recalc.py 등을 탐색
+    candidates_recalc = [
+        os.path.join(BASE_DIR, 'api', 'recalc.py'),
+        os.path.join(os.path.dirname(__file__), '..', 'api', 'recalc.py'),
+        os.path.join(os.getcwd(), 'api', 'recalc.py')
+    ]
+    recalc_script = next((p for p in candidates_recalc if os.path.exists(p)), candidates_recalc[0])
     
     if not os.path.exists(base_excel):
+        # 상세한 디버깅 정보 포함
+        available_files = []
+        try:
+            for root, dirs, files in os.walk(BASE_DIR):
+                for f in files:
+                    if f.endswith('.xlsx'):
+                        available_files.append(os.path.relpath(os.path.join(root, f), BASE_DIR))
+        except: pass
+
         return jsonify({
             'status': 'error', 
-            'message': f'Base MO Excel file not found. Checked: {os.path.join(BASE_DIR, "data", "mo", "MO_RESULT.xlsx")} and {os.path.join(BASE_DIR, "api", "data", "mo", "MO_RESULT.xlsx")}',
+            'message': f'Base MO Excel file not found. Checked multiple locations including {base_excel}',
             'cwd': os.getcwd(),
-            'base_dir': BASE_DIR
+            'base_dir': BASE_DIR,
+            'available_xlsx': available_files[:10] # 너무 많을 수 있으니 일부만
         }), 404
 
     # 임시 파일 경로 생성
@@ -240,12 +266,28 @@ def api_mo_generate():
 @app.route('/api/debug/files')
 def debug_files():
     files_tree = []
-    for root, dirs, files in os.walk(BASE_DIR):
-        for file in files:
-            files_tree.append(os.path.relpath(os.path.join(root, file), BASE_DIR))
+    try:
+        # 주요 디렉토리 탐색
+        for d in [BASE_DIR, os.getcwd(), os.path.join(BASE_DIR, 'data'), os.path.join(BASE_DIR, 'api')]:
+            if os.path.exists(d):
+                for root, dirs, files in os.walk(d):
+                    # 너무 많은 파일 방지를 위해 depth 제한 (간접적으로)
+                    level = root.replace(d, '').count(os.sep)
+                    if level > 3: continue
+                    
+                    for file in files:
+                        files_tree.append({
+                            'path': os.path.relpath(os.path.join(root, file), BASE_DIR),
+                            'abs': os.path.join(root, file),
+                            'size': os.path.getsize(os.path.join(root, file))
+                        })
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
     return jsonify({
         'base_dir': BASE_DIR,
         'cwd': os.getcwd(),
+        'env_vercel': os.environ.get('VERCEL'),
         'files': files_tree
     })
 
