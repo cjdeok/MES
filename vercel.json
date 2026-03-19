@@ -2,20 +2,20 @@
   "version": 2,
   "builds": [
     {
-      "src": "vercel_app.py",
+      "src": "api/_handler.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "vercel_app.py"
+      "dest": "api/_handler.py"
     }
   ],
   "functions": {
-    "vercel_app.py": {
+    "api/_handler.py": {
       "maxDuration": 30,
-      "includeFiles": "{data/**,api/data/**,api/recalc.py}"
+      "includeFiles": "data/**"
     }
   }
 }
