@@ -14,7 +14,11 @@
   ],
   "functions": {
     "api/index.py": {
-      "includeFiles": "data/**, api/data/**, api/recalc.py"
+      "includeFiles": [
+        "data/**",
+        "api/data/**",
+        "api/recalc.py"
+      ]
     }
   }
 }
