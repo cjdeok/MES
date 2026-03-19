@@ -185,9 +185,10 @@ def api_mo_generate():
     # recalc.py 경로 수정 (api 폴더 내에 복사된 버전 사용)
     # Vercel 환경에서는 BASE_DIR/api/recalc.py 또는 루트/api/recalc.py 등을 탐색
     candidates_recalc = [
+        os.path.join(BASE_DIR, 'data', 'recalc.py'),
         os.path.join(BASE_DIR, 'api', 'recalc.py'),
-        os.path.join(os.path.dirname(__file__), '..', 'api', 'recalc.py'),
-        os.path.join(os.getcwd(), 'api', 'recalc.py')
+        os.path.join(os.path.dirname(__file__), '..', 'data', 'recalc.py'),
+        os.path.join(os.getcwd(), 'data', 'recalc.py')
     ]
     recalc_script = next((p for p in candidates_recalc if os.path.exists(p)), candidates_recalc[0])
     
