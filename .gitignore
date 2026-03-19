@@ -39,5 +39,6 @@ desktop.ini
 # Project specific
 *.csv
 *.xlsx
+!data/**/*.xlsx
 !directives/**/*.csv
 !execution/**/*.csv
