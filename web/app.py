@@ -724,7 +724,7 @@ def upload_receiving_api():
 
         sb = get_supabase_client()
         
-        # 1단계: material_info 테이블 업데이트/삽입 (수동 upsert 로직 + ID 충돌 방지)
+        # 1단계: material_info 테이블 업데이트/삽입 (수동 upsert 로직 + ID 자동 할당)
         try:
             # 기존 레코드 존재 여부 확인 (item_code와 lot_no 기준)
             existing = sb.table('material_info').select('id').eq('item_code', item_code).eq('lot_no', lot_no).execute()
@@ -749,29 +749,16 @@ def upload_receiving_api():
                 sb.table('material_info').update(info_data).eq('id', row_id).execute()
                 print(f"material_info updated (ID: {row_id})")
             else:
-                # 존재하지 않으면 삽입 (ID 시퀀스 충돌 방지를 위해 최대 ID 조회 후 할당)
-                max_res = sb.table('material_info').select('id').order('id', desc=True).limit(1).execute()
-                next_id = 1
-                if max_res.data:
-                    next_id = max_res.data[0]['id'] + 1
-                
-                info_data['id'] = next_id
+                # 존재하지 않으면 삽입 (DB가 ID 자동 할당)
                 sb.table('material_info').insert(info_data).execute()
-                print(f"material_info inserted (ID: {next_id})")
+                print(f"material_info inserted (auto-id)")
         except Exception as e_info:
             print(f"material_info processing error: {str(e_info)}")
             # 정보 테이블 저장 실패 시에도 로그를 남기고 계속 진행 (또는 에러 반환 선택 가능)
 
-        # 2단계: raw_materials 입고 내역 추가 (ID 시퀀스 충돌 방지 적용)
+        # 2단계: raw_materials 입고 내역 추가 (ID 자동 할당)
         try:
-            # raw_materials 테이블도 ID 충돌 방지 적용
-            max_raw = sb.table('raw_materials').select('id').order('id', desc=True).limit(1).execute()
-            next_raw_id = 1
-            if max_raw.data:
-                next_raw_id = max_raw.data[0]['id'] + 1
-
             sb.table('raw_materials').insert({
-                'id': next_raw_id,
                 'item_code': item_code,
                 'product_name': product_name if product_name else '알 수 없음',
                 'transaction_type': '입고',
@@ -780,9 +767,9 @@ def upload_receiving_api():
                 'quantity': quantity,
                 'lot_no': lot_no
             }).execute()
-            print(f"raw_materials inserted (ID: {next_raw_id})")
+            print(f"raw_materials inserted (auto-id)")
         except Exception as e_raw:
-            return jsonify({'status': 'error', 'message': f'입고 내역 저장 실패(ID충돌 등): {str(e_raw)}'}), 500
+            return jsonify({'status': 'error', 'message': f'입고 내역 저장 실패: {str(e_raw)}'}), 500
 
         return jsonify({'status': 'success', 'message': f'[{item_code}] {product_name} ({quantity} 입고) 내역이 정상 등록되었습니다.'})
 
