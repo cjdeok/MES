@@ -45,3 +45,5 @@ desktop.ini
 !execution/**/*.csv
 
 .tmp2/
+!data/bom_formulas/**/*.csv
+
