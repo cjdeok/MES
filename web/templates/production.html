@@ -4,31 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>생산 관리 - 원료 할당</title>
-    <!-- Google Fonts: Inter -->
+    <title>생산 관리 - BOM 전개 계산기</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
-    <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .home-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--text-muted);
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: var(--radius-md);
-            background: rgba(255, 255, 255, 0.05);
-            transition: all 0.2s;
-        }
-
-        .home-btn:hover {
-            color: white;
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        #kit-qty-input {
+        .form-control {
             width: 100%;
             padding: 0.8rem 1rem;
             border-radius: var(--radius-md);
@@ -39,7 +20,7 @@
             font-family: inherit;
         }
 
-        #kit-qty-input:focus {
+        .form-control:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
@@ -59,6 +40,7 @@
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
+            height: 48px;
         }
 
         .action-btn:hover {
@@ -66,12 +48,11 @@
             transform: translateY(-1px);
         }
 
-        /* Input with Button Group */
         .input-group-container {
             display: flex;
             flex-direction: column;
             gap: 0.6rem;
-            max-width: 500px;
+            margin-bottom: 1.5rem;
         }
 
         .input-group-container label {
@@ -80,74 +61,54 @@
             font-weight: 500;
         }
 
-        .input-with-button {
-            display: flex;
-            gap: 0.5rem;
+        .level-section {
+            margin-bottom: 24px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
         }
 
-        .input-with-button #kit-qty-input {
-            flex: 1;
-        }
-
-        .input-with-button .action-btn {
-            white-space: nowrap;
-            padding: 0 1.5rem;
-        }
-
-        .alloc-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .alloc-item {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            font-size: 0.9rem;
-        }
-
-        .alloc-item:last-child {
-            border-bottom: none;
-        }
-
-        .lot-badge {
-            background: rgba(59, 130, 246, 0.15);
-            color: #60a5fa;
-            padding: 0.2rem 0.6rem;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 0.85rem;
-            min-width: 140px;
-            text-align: left;
-        }
-
-        .date-badge {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-        }
-
-        .qty-badge {
+        .level-header {
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 12px 16px;
             font-weight: 600;
-            color: var(--text-main);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            color: #fff;
         }
-
-        .shortage {
-            color: #ef4444;
-            font-weight: bold;
-        }
-
-        .success-text {
+        
+        .highlight {
             color: #10b981;
+            font-weight: 700;
+        }
+        
+        .result-area {
+            display: none;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        th {
+            background-color: rgba(255, 255, 255, 0.02);
+            color: var(--text-muted);
+            font-weight: 600;
         }
     </style>
 </head>
 
 <body>
     <div class="app-container">
-    <header class="top-header">
+        <header class="top-header">
         <a href="/" class="header-brand">
             <img src="/static/img/logo.png" alt="Logo" class="brand-logo">
             <span>생산관리팀 통합 관리</span>
@@ -214,70 +175,246 @@
             </a>
         </nav>
     </header>
-
-        <!-- Main Content -->
+        
         <main>
-            <!-- Control Panel -->
             <section class="control-panel glass-panel">
-                <h2><i class="fa-solid fa-calculator"></i> 생산 지시</h2>
-                <div class="input-group-container">
-                    <label for="kit-qty-input">키트 생산 수량 (1 ~ 256)</label>
-                    <div class="input-with-button">
-                        <input type="number" id="kit-qty-input" min="1" max="256" placeholder="예: 10">
-                        <button id="calc-btn" class="action-btn">
-                            <i class="fa-solid fa-wand-magic-sparkles"></i> 소요량 계산
-                        </button>
+                <h2><i class="fa-solid fa-sitemap"></i> BOM 전개 및 재고 할당 계산기</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="input-group-container">
+                        <label>수식 마스터 파일 선택</label>
+                        <select id="formulaFileSelect" class="form-control">
+                            <option value="">파일 목록을 불러오는 중...</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group-container">
+                        <label>목표 생산량 (Level 0)</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="number" id="targetQty" class="form-control" placeholder="수량을 입력하세요" min="1" value="256" />
+                            <button onclick="calculateBOM()" class="action-btn" style="white-space: nowrap;">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> 분석 및 할당
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Loading Spinner -->
-            <div id="loading" class="hidden">
+            <div id="spinner" class="hidden" style="text-align: center; padding: 40px; color: var(--text-muted); display: none;">
                 <div class="spinner"></div>
                 <p>BOM 전개 및 선입선출 재고 할당 중...</p>
             </div>
 
-            <!-- Empty State -->
-            <div id="empty-state" class="empty-state">
+            <div id="emptyState" class="empty-state">
                 <i class="fa-solid fa-clipboard-check"></i>
-                <p>생산 수량을 입력하고 계산 버튼을 눌러주세요.</p>
+                <p>수식 파일과 목표 생산량을 설정하고 분석 버튼을 눌러주세요.</p>
             </div>
 
-            <!-- Results Section -->
-            <section id="results-section" class="results-section hidden">
-                <!-- History Table -->
+            <section id="resultArea" class="results-section result-area">
                 <div class="history-panel glass-panel">
-                    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                         <div style="display: flex; align-items: center; gap: 1rem;">
-                            <h2><i class="fa-solid fa-list-check"></i> 선입선출 기반 원료 할당 결과</h2>
-                            <span id="kit-label" class="badge"></span>
+                            <h2><i class="fa-solid fa-list-check"></i> 선입선출 기반 전개 및 할당 결과</h2>
                         </div>
-                        <button id="download-xlsx-btn" class="action-btn" style="padding: 0.5rem 1rem; font-size: 0.85rem; height: auto; background: #10b981;">
-                            <i class="fa-solid fa-file-excel"></i> 엑셀 다운로드
-                        </button>
                     </div>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>원료 코드 / 원료명</th>
-                                    <th style="text-align: right;">필요 수량</th>
-                                    <th>할당 내역 (Lot / 유효기간 / 할당수량)</th>
-                                    <th style="text-align: right;">부족 수량</th>
-                                    <th style="text-align: center;">상태</th>
-                                </tr>
-                            </thead>
-                            <tbody id="production-tbody">
-                                <!-- Data will be injected here -->
-                            </tbody>
-                        </table>
+                    
+                    <div id="summaryInfo" style="margin-bottom: 20px; font-weight: 500; color: var(--text-muted);"></div>
+                    
+                    <div class="level-section">
+                        <div class="level-header">Level 1 (포장/완제품) <span id="l1Count"></span></div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 15%;">상위 Lot</th>
+                                        <th style="width: 20%;">Code No. / 명칭</th>
+                                        <th style="width: 15%; text-align: right;">필요 수량</th>
+                                        <th style="width: 30%;">할당 내역 (Lot / 유효기간 / 할당수량)</th>
+                                        <th style="width: 10%; text-align: right;">부족 수량</th>
+                                        <th style="width: 10%; text-align: center;">상태</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="l1Table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="level-section">
+                        <div class="level-header">Level 2 (반제품 제조) <span id="l2Count"></span></div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 15%;">상위 Lot</th>
+                                        <th style="width: 20%;">Code No. / 명칭</th>
+                                        <th style="width: 15%; text-align: right;">필요 수량</th>
+                                        <th style="width: 30%;">할당 내역 (Lot / 유효기간 / 할당수량)</th>
+                                        <th style="width: 10%; text-align: right;">부족 수량</th>
+                                        <th style="width: 10%; text-align: center;">상태</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="l2Table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="level-section">
+                        <div class="level-header">Level 3 (하위 조제) <span id="l3Count"></span></div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 15%;">상위 Lot</th>
+                                        <th style="width: 20%;">Code No. / 명칭</th>
+                                        <th style="width: 15%; text-align: right;">필요 수량</th>
+                                        <th style="width: 30%;">할당 내역 (Lot / 유효기간 / 할당수량)</th>
+                                        <th style="width: 10%; text-align: right;">부족 수량</th>
+                                        <th style="width: 10%; text-align: center;">상태</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="l3Table"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </section>
         </main>
     </div>
 
-    <script src="/static/js/production.js"></script>
-</body>
+    <script>
+        fetch('/api/lots/bom')
+            .then(res => res.json())
+            .then(data => {
+                const select = document.getElementById('formulaFileSelect');
+                select.innerHTML = '';
+                
+                if(data && data.length > 0) {
+                    data.forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = item.filename;
+                        opt.textContent = item.filename;
+                        if(item.filename.includes('BCE01_BOM')) opt.selected = true;
+                        select.appendChild(opt);
+                    });
+                } else {
+                    select.innerHTML = '<option value="">가용한 파일 없음</option>';
+                }
+            })
+            .catch(err => {
+                console.error("파일 목록을 불러오지 못했습니다.", err);
+                const select = document.getElementById('formulaFileSelect');
+                select.innerHTML = '<option value="">파일 로드 중 오류 발생</option>';
+            });
 
+        function calculateBOM() {
+            const formulaFile = document.getElementById('formulaFileSelect').value;
+            const targetQty = document.getElementById('targetQty').value;
+
+            if (!formulaFile) {
+                alert("수식 마스터 파일을 선택해주세요.");
+                return;
+            }
+            if (!targetQty || targetQty <= 0) {
+                alert("유효한 목표 생산량을 입력해주세요.");
+                return;
+            }
+
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('resultArea').style.display = 'none';
+            document.getElementById('spinner').style.display = 'block';
+
+            fetch('/api/generate_bom_allocated', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    formula_file: formulaFile,
+                    target_qty: targetQty 
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('spinner').style.display = 'none';
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                renderResults(data);
+                document.getElementById('resultArea').style.display = 'block';
+            })
+            .catch(err => {
+                document.getElementById('spinner').style.display = 'none';
+                alert("서버 통신 중 오류가 발생했습니다.");
+                console.error(err);
+            });
+        }
+
+        function renderResults(data) {
+            document.getElementById('summaryInfo').innerText = 
+                `파일 [${data.level0.제품명.replace('전개 소스: ', '')}]을(를) 사용하여 전개한 결과입니다. (목표수량: ${data.level0.목표수량})`;
+
+            renderTable('l1Table', 'l1Count', data.level1);
+            renderTable('l2Table', 'l2Count', data.level2);
+            renderTable('l3Table', 'l3Count', data.level3);
+        }
+
+        function renderTable(tableId, countId, items) {
+            const tbody = document.getElementById(tableId);
+            tbody.innerHTML = '';
+            document.getElementById(countId).innerText = `${items.length} 항목`;
+            
+            if (items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center;">해당 데이터가 없습니다.</td></tr>`;
+                return;
+            }
+
+            items.forEach(item => {
+                const tr = document.createElement('tr');
+
+                // Lot List Formatting
+                let lotHtml = '<ul class="alloc-list" style="margin: 0; padding-left: 0; list-style: none;">';
+                if (item.allocated_lots && item.allocated_lots.length > 0) {
+                    item.allocated_lots.forEach(lot => {
+                        lotHtml += `
+                            <li class="alloc-item" style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 4px;">
+                                <span class="lot-badge" style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:0.8rem; color:#e2e8f0; border: 1px solid rgba(255,255,255,0.2);">${lot.lot_no}</span>
+                                <span class="date-badge" style="font-size:0.8rem; color:#a0aec0;"><i class="fa-regular fa-calendar-days"></i> ${lot.expire_date}</span>
+                                <span class="qty-badge" style="margin-left: auto; font-weight: 700; color: #10b981; font-size:0.9rem;">${lot.allocated_qty.toLocaleString()}</span>
+                            </li>
+                        `;
+                    });
+                } else {
+                    lotHtml += `<li class="alloc-item" style="color: var(--text-muted); font-size:0.85rem;">할당 가능 재고 없음</li>`;
+                }
+                lotHtml += '</ul>';
+
+                // Shortage status
+                let statusHtml = '';
+                let shortageClass = '';
+                if (item.status === 'success') {
+                    statusHtml = `<span class="badge success-text" style="color:#10b981; font-size:0.85rem;"><i class="fa-solid fa-check"></i> 할당 완료</span>`;
+                } else {
+                    statusHtml = `<span class="badge shortage" style="color:#ef4444; font-size:0.85rem; font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> 부족</span>`;
+                    shortageClass = 'shortage';
+                }
+                
+                let unit = item['단위'] || '';
+                let shortage_val = item.shortage_qty || 0;
+
+                tr.innerHTML = `
+                    <td>${item['상위Lot']}</td>
+                    <td>
+                        <div style="font-weight: 600; color: var(--primary); margin-bottom: 0.2rem;">${item['Code_No'] || ''}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted);">${item['명칭 / 구성품']}</div>
+                    </td>
+                    <td style="text-align: right; font-weight: bold; font-size: 1.05rem;">${item['계산된_소요량'].toLocaleString()} <span style="font-size:0.75rem; color: #6b7280; font-weight:normal;">${unit}</span></td>
+                    <td>${lotHtml}</td>
+                    <td style="text-align: right; color: ${shortage_val>0 ? '#ef4444':'inherit'}; font-weight: ${shortage_val>0 ? '600':'normal'};" class="${shortageClass}">${shortage_val.toLocaleString()}</td>
+                    <td style="text-align: center;">${statusHtml}</td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
 </html>

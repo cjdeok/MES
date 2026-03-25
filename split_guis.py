@@ -1,4 +1,30 @@
-<!DOCTYPE html>
+import os
+
+base_dir = r"c:\Users\ENS-1000\Documents\Antigravity\MES"
+bom_html_path = os.path.join(base_dir, "web", "templates", "bom_calculator.html")
+prod_html_path = os.path.join(base_dir, "web", "templates", "production.html")
+
+# Read the current bom_calculator.html, which is the "advanced" one
+with open(bom_html_path, "r", encoding="utf-8") as f:
+    adv_html = f.read()
+
+# Make it production.html
+# 1. Point the API to /api/generate_bom_allocated
+adv_prod = adv_html.replace("fetch('/api/generate_bom'", "fetch('/api/generate_bom_allocated'")
+# 2. Fix the navigation
+# First, remove `class="active"` from /bom-calculator
+adv_prod = adv_prod.replace('<a href="/bom-calculator" class="active">', '<a href="/bom-calculator">')
+# Next, add `active` to production
+adv_prod = adv_prod.replace('<a href="/production" class="nav-btn">', '<a href="/production" class="nav-btn active">')
+adv_prod = adv_prod.replace('<a href="/production"><i class="fa-solid fa-calculator"></i>생산 지시</a>', '<a href="/production" class="active"><i class="fa-solid fa-calculator"></i>생산 지시</a>')
+
+with open(prod_html_path, "w", encoding="utf-8") as f:
+    f.write(adv_prod)
+
+
+# For bom_calculator.html, we need to revert it to the SIMPLE version.
+# Let's write the SIMPLE version.
+simple_template = """<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -34,73 +60,7 @@
 </head>
 <body>
     <div class="app-container">
-        <header class="top-header">
-        <a href="/" class="header-brand">
-            <img src="/static/img/logo.png" alt="Logo" class="brand-logo">
-            <span>생산관리팀 통합 관리</span>
-        </a>
-        <nav class="header-nav">
-            <a href="/" class="nav-btn">
-                <i class="fa-solid fa-house"></i>
-                재고현황
-            </a>
-            <a href="/material-info" class="nav-btn">
-                <i class="fa-solid fa-list-ul"></i>
-                안전재고
-            </a>
-            <a href="/purchase-dashboard" class="nav-btn">
-                <i class="fa-solid fa-chart-line"></i>
-                구매 대시보드
-            </a>
-            <a href="/facilities" class="nav-btn">
-                <i class="fa-solid fa-tools"></i>
-                설비 관리
-            </a>
-            <a href="/inventory" class="nav-btn">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                원료상세검색
-            </a>
-            <a href="/raw-material" class="nav-btn">
-                <i class="fa-solid fa-flask"></i>
-                원재료관리
-            </a>
-            <a href="/producible" class="nav-btn">
-                <i class="fa-solid fa-flask-vial"></i>
-                생산가능수량
-            </a>
-                        <div class="nav-dropdown">
-                <a href="/production" class="nav-btn">
-                    <i class="fa-solid fa-industry"></i>
-                    생산 관리 <i class="fa-solid fa-chevron-down" style="font-size: 0.7rem; margin-left: 5px;"></i>
-                </a>
-                <div class="dropdown-content">
-                    <a href="/production"><i class="fa-solid fa-calculator"></i>생산 지시</a>
-                    <a href="/mo-management"><i class="fa-solid fa-file-contract"></i>MO 생성</a>
-                    <a href="/bom-calculator" class="active"><i class="fa-solid fa-sitemap"></i>BOM 계산기</a>
-                </div>
-            </div>
-            <a href="/finished-product" class="nav-btn">
-                <i class="fa-solid fa-box"></i>
-                완제품관리
-            </a>
-            <a href="/validation" class="nav-btn">
-                <i class="fa-solid fa-clipboard-check"></i>
-                밸리데이션
-            </a>
-            <a href="/calibration" class="nav-btn">
-                <i class="fa-solid fa-compass-drafting"></i>
-                검교정
-            </a>
-            <a href="/upload-usage" class="nav-btn">
-                <i class="fa-solid fa-file-arrow-up"></i>
-                사용량 업로드
-            </a>
-            <a href="/upload-receiving" class="nav-btn">
-                <i class="fa-solid fa-file-import"></i>
-                입고 업로드
-            </a>
-        </nav>
-    </header>
+        <!-- HEADER PLACEHOLDER -->
         <main>
             <section class="control-panel glass-panel">
                 <h2><i class="fa-solid fa-sitemap"></i> BOM 전개 계산기 (Original)</h2>
@@ -206,4 +166,16 @@
         }
     </script>
 </body>
-</html>
+</html>"""
+
+# Now extract the header from the OLD advanced HTML to ensure the nav links have the right "active" class
+import re
+match = re.search(r'(?s)<header class="top-header">.*?</header>', adv_html)
+header_str = match.group(0) if match else "<!-- FAIL -->"
+# Here "bom-calculator" should be active, which it already was in adv_html!
+final_simple_html = simple_template.replace('<!-- HEADER PLACEHOLDER -->', header_str)
+
+with open(bom_html_path, "w", encoding="utf-8") as f:
+    f.write(final_simple_html)
+
+print("split_guis done")
