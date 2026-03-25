@@ -227,9 +227,9 @@
                                 <thead>
                                     <tr>
                                         <th style="width: 15%;">상위 Lot</th>
-                                        <th style="width: 20%;">Code No. / 명칭</th>
-                                        <th style="width: 15%; text-align: right;">필요 수량</th>
-                                        <th style="width: 30%;">할당 내역 (Lot / 유효기간 / 할당수량)</th>
+                                        <th style="width: 15%;">Code No. / 명칭</th>
+                                        <th style="width: 13%; text-align: right;">필요 수량</th>
+                                        <th style="width: 37%;">할당 내역 (Lot / 유효기간 / 할당수량)</th>
                                         <th style="width: 10%; text-align: right;">부족 수량</th>
                                         <th style="width: 10%; text-align: center;">상태</th>
                                     </tr>
@@ -246,9 +246,9 @@
                                 <thead>
                                     <tr>
                                         <th style="width: 15%;">상위 Lot</th>
-                                        <th style="width: 20%;">Code No. / 명칭</th>
-                                        <th style="width: 15%; text-align: right;">필요 수량</th>
-                                        <th style="width: 30%;">할당 내역 (Lot / 유효기간 / 할당수량)</th>
+                                        <th style="width: 15%;">Code No. / 명칭</th>
+                                        <th style="width: 13%; text-align: right;">필요 수량</th>
+                                        <th style="width: 37%;">할당 내역 (Lot / 유효기간 / 할당수량)</th>
                                         <th style="width: 10%; text-align: right;">부족 수량</th>
                                         <th style="width: 10%; text-align: center;">상태</th>
                                     </tr>
@@ -265,9 +265,9 @@
                                 <thead>
                                     <tr>
                                         <th style="width: 15%;">상위 Lot</th>
-                                        <th style="width: 20%;">Code No. / 명칭</th>
-                                        <th style="width: 15%; text-align: right;">필요 수량</th>
-                                        <th style="width: 30%;">할당 내역 (Lot / 유효기간 / 할당수량)</th>
+                                        <th style="width: 15%;">Code No. / 명칭</th>
+                                        <th style="width: 13%; text-align: right;">필요 수량</th>
+                                        <th style="width: 37%;">할당 내역 (Lot / 유효기간 / 할당수량)</th>
                                         <th style="width: 10%; text-align: right;">부족 수량</th>
                                         <th style="width: 10%; text-align: center;">상태</th>
                                     </tr>
@@ -370,6 +370,7 @@
             items.forEach(item => {
                 const tr = document.createElement('tr');
 
+                let unit = item['단위'] || '';
                 // Lot List Formatting
                 let lotHtml = '<ul class="alloc-list" style="margin: 0; padding-left: 0; list-style: none;">';
                 if (item.allocated_lots && item.allocated_lots.length > 0) {
@@ -378,7 +379,7 @@
                             <li class="alloc-item" style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 4px;">
                                 <span class="lot-badge" style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:0.8rem; color:#e2e8f0; border: 1px solid rgba(255,255,255,0.2);">${lot.lot_no}</span>
                                 <span class="date-badge" style="font-size:0.8rem; color:#a0aec0;"><i class="fa-regular fa-calendar-days"></i> ${lot.expire_date}</span>
-                                <span class="qty-badge" style="margin-left: auto; font-weight: 700; color: #10b981; font-size:0.9rem;">${lot.allocated_qty.toLocaleString()}</span>
+                                <span class="qty-badge" style="margin-left: auto; font-weight: 700; color: #10b981; font-size:0.9rem;">${lot.allocated_qty.toLocaleString()} <span style="font-size:0.75rem; color: rgba(255,255,255,0.5); font-weight:normal;">${unit}</span></span>
                             </li>
                         `;
                     });
@@ -396,8 +397,6 @@
                     statusHtml = `<span class="badge shortage" style="color:#ef4444; font-size:0.85rem; font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> 부족</span>`;
                     shortageClass = 'shortage';
                 }
-                
-                let unit = item['단위'] || '';
                 let shortage_val = item.shortage_qty || 0;
 
                 tr.innerHTML = `
