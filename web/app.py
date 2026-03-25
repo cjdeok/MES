@@ -1164,6 +1164,35 @@ def generate_bom():
             except Exception as e:
                 return 0.0
 
+        all_codes = set()
+        for _, r in df.iterrows():
+            name2 = str(r.get('생산LOT', '')).strip()
+            if name2 and name2.lower() != 'nan':
+                all_codes.add(name2)
+        
+        sb = get_supabase_client()
+        lot_stocks = defaultdict(float)
+        lot_in_qty = defaultdict(float)
+        info_map = {}
+        
+        if all_codes:
+            res_info = sb.table('material_info').select('item_code, lot_no, receive_date, expire_date').in_('item_code', list(all_codes)).execute()
+            for r in res_info.data:
+                info_map[(r['item_code'], r['lot_no'])] = {
+                    'receive_date': r['receive_date'],
+                    'expire_date': r['expire_date']
+                }
+
+            res_raw = sb.table('raw_materials').select('item_code, lot_no, transaction_type, quantity').in_('item_code', list(all_codes)).execute()
+            for r in res_raw.data:
+                key = (r['item_code'], r['lot_no'])
+                qty = float(r['quantity'] or 0)
+                if r['transaction_type'] == '입고':
+                    lot_stocks[key] += qty
+                    lot_in_qty[key] += qty
+                else:
+                    lot_stocks[key] -= qty
+
         result = {
             "level0": {"제품명": f"전개 소스: {safe_filename}", "목표수량": target_qty},
             "level1": [], "level2": [], "level3": []
@@ -1185,14 +1214,68 @@ def generate_bom():
             if not final_name or final_name.lower() in ['nan', '']: continue
             
             calculated_val = evaluate_formula(formula, target_qty)
+            mat_code = name2 if name2.lower() != 'nan' else ''
+            required_qty = round(calculated_val, 3)
             
+            allocated_lots = []
+            shortage_qty = required_qty
+            status = 'shortage'
+
+            if mat_code and mat_code != '' and required_qty > 0:
+                available_lots = []
+                for (itm_cd, lot_no), stock in lot_stocks.items():
+                    if itm_cd == mat_code and stock > 0:
+                        info = info_map.get((itm_cd, lot_no), {})
+                        rec_date = info.get('receive_date') or '9999-12-31'
+                        exp_date = info.get('expire_date') or '9999-12-31'
+                        
+                        total_in = lot_in_qty.get((itm_cd, lot_no), 0)
+                        is_in_use = 0 if stock < total_in else 1
+                        
+                        available_lots.append({
+                            'lot_no': lot_no,
+                            'current_stock': stock,
+                            'rec_date': rec_date,
+                            'exp_date': exp_date,
+                            'is_in_use': is_in_use
+                        })
+                
+                available_lots.sort(key=lambda x: (x['is_in_use'], x['exp_date'], x['rec_date'], x['lot_no']))
+
+                remaining_to_allocate = required_qty
+                
+                for lot in available_lots:
+                    if remaining_to_allocate <= 0:
+                        break
+                        
+                    alloc_qty = min(remaining_to_allocate, lot['current_stock'])
+                    allocated_lots.append({
+                        'lot_no': lot['lot_no'],
+                        'receive_date': lot['rec_date'] if lot['rec_date'] != '9999-12-31' else '정보 없음',
+                        'expire_date': lot['exp_date'] if lot['exp_date'] != '9999-12-31' else '정보 없음',
+                        'available_stock': lot['current_stock'],
+                        'allocated_qty': round(alloc_qty, 4)
+                    })
+                    
+                    remaining_to_allocate -= alloc_qty
+                    lot_stocks[(mat_code, lot['lot_no'])] -= alloc_qty
+
+                shortage_qty = round(max(0, remaining_to_allocate), 4)
+                status = 'success' if shortage_qty == 0 else 'shortage'
+            elif required_qty == 0:
+                shortage_qty = 0
+                status = 'success'
+
             item_dict = {
                 "상위Lot": parent if parent.lower() != 'nan' else '',
                 "명칭 / 구성품": final_name,
-                "생산Lot": name2 if name2.lower() != 'nan' else '',
-                "계산된_소요량": round(calculated_val, 3),
+                "Code_No": mat_code,
+                "계산된_소요량": required_qty,
                 "단위": unit if unit.lower() != 'nan' else '',
                 "레벨": lvl,
+                "allocated_lots": allocated_lots,
+                "shortage_qty": shortage_qty,
+                "status": status
             }
             
             if lvl == '1': result["level1"].append(item_dict)
