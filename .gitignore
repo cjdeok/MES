@@ -43,3 +43,5 @@ desktop.ini
 !api/data/**/*.xlsx
 !directives/**/*.csv
 !execution/**/*.csv
+
+.tmp2/
