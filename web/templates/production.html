@@ -216,6 +216,9 @@
                         <div style="display: flex; align-items: center; gap: 1rem;">
                             <h2><i class="fa-solid fa-list-check"></i> 선입선출 기반 전개 및 할당 결과</h2>
                         </div>
+                        <button onclick="downloadCSV()" class="action-btn" style="background: #10b981; padding: 0 1.5rem; height: 40px; font-size: 0.9rem;">
+                            <i class="fa-solid fa-file-csv"></i> CSV 다운로드
+                        </button>
                     </div>
                     
                     <div id="summaryInfo" style="margin-bottom: 20px; font-weight: 500; color: var(--text-muted);"></div>
@@ -282,6 +285,8 @@
     </div>
 
     <script>
+        let lastCalcData = null;
+
         fetch('/api/lots/bom')
             .then(res => res.json())
             .then(data => {
@@ -339,6 +344,7 @@
                     return;
                 }
                 renderResults(data);
+                lastCalcData = data;
                 document.getElementById('resultArea').style.display = 'block';
             })
             .catch(err => {
@@ -413,6 +419,70 @@
 
                 tbody.appendChild(tr);
             });
+        }
+
+        function downloadCSV() {
+            if (!lastCalcData) return;
+
+            const rows = [
+                ['Level', '상위 Lot', 'Code No.', '명칭 / 구성품', '필요 수량', '단위', '할당 Lot', '유효기간', '할당수량', '부족 수량', '상태']
+            ];
+
+            const levels = ['level1', 'level2', 'level3'];
+            levels.forEach(lvlKey => {
+                const items = lastCalcData[lvlKey];
+                items.forEach(item => {
+                    const baseRow = [
+                        item['레벨'],
+                        item['상위Lot'],
+                        item['Code_No'],
+                        item['명칭 / 구성품'],
+                        item['계산된_소요량'],
+                        item['단위'],
+                        '', '', '', // Allocated info placeholders
+                        item['shortage_qty'],
+                        item['status'] === 'success' ? '할당 완료' : '부족'
+                    ];
+
+                    if (item.allocated_lots && item.allocated_lots.length > 0) {
+                        item.allocated_lots.forEach((lot, index) => {
+                            const newRow = [...baseRow];
+                            newRow[6] = lot.lot_no;
+                            newRow[7] = lot.expire_date;
+                            newRow[8] = lot.allocated_qty;
+                            rows.push(newRow);
+                        });
+                    } else {
+                        rows.push(baseRow);
+                    }
+                });
+            });
+
+            let csvContent = "\uFEFF"; // UTF-8 BOM for Excel
+            rows.forEach(rowArray => {
+                const row = rowArray.map(val => {
+                    const text = String(val).replace(/"/g, '""');
+                    return `"${text}"`;
+                }).join(",");
+                csvContent += row + "\r\n";
+            });
+
+            const targetQty = document.getElementById('targetQty').value;
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+            const filename = `Production_BOM_Target${targetQty}_${dateStr}.csv`;
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
         }
     </script>
 </body>
