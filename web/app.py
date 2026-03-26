@@ -616,7 +616,8 @@ def calculate_production():
             # 가용 재고 목록 생성
             available_lots = []
             for (itm_cd, lot_no), stock in lot_stocks.items():
-                if itm_cd == mat_code and stock > 0:
+                # 부동 소수점 오차를 고려하여 0.0001보다 큰 경우만 가용 재고로 인정
+                if itm_cd == mat_code and stock > 0.0001:
                     info = info_map.get((itm_cd, lot_no), {})
                     rec_date = info.get('receive_date') or '9999-12-31'
                     exp_date = info.get('expire_date') or '9999-12-31'
@@ -653,6 +654,7 @@ def calculate_production():
                 })
                 
                 remaining_to_allocate -= alloc_qty
+                lot_stocks[(mat_code, lot['lot_no'])] = max(0, lot_stocks[(mat_code, lot['lot_no'])] - alloc_qty)
                 
             shortage_qty = round(max(0, remaining_to_allocate), 4)
             
@@ -1313,7 +1315,8 @@ def generate_bom_allocated():
             if mat_code and mat_code != '' and required_qty > 0:
                 available_lots = []
                 for (itm_cd, lot_no), stock in lot_stocks.items():
-                    if itm_cd == mat_code and stock > 0:
+                    # 부동 소수점 오차를 고려하여 0.0001보다 큰 경우만 가용 재고로 인정
+                    if itm_cd == mat_code and stock > 0.0001:
                         info = info_map.get((itm_cd, lot_no), {})
                         rec_date = info.get('receive_date') or '9999-12-31'
                         exp_date = info.get('expire_date') or '9999-12-31'
@@ -1347,13 +1350,14 @@ def generate_bom_allocated():
                     })
                     
                     remaining_to_allocate -= alloc_qty
-                    lot_stocks[(mat_code, lot['lot_no'])] -= alloc_qty
+                    lot_stocks[(mat_code, lot['lot_no'])] = max(0, lot_stocks[(mat_code, lot['lot_no'])] - alloc_qty)
 
                 shortage_qty = round(max(0, remaining_to_allocate), 4)
                 status = 'success' if shortage_qty == 0 else 'shortage'
             elif required_qty == 0:
                 shortage_qty = 0
                 status = 'success'
+
 
             item_dict = {
                 "상위Lot": parent if parent.lower() != 'nan' else '',
