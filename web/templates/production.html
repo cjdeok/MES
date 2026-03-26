@@ -459,9 +459,15 @@
             });
 
             let csvContent = "\uFEFF"; // UTF-8 BOM for Excel
-            rows.forEach(rowArray => {
-                const row = rowArray.map(val => {
+            rows.forEach((rowArray, rowIndex) => {
+                const row = rowArray.map((val, colIndex) => {
                     const text = String(val).replace(/"/g, '""');
+                    // Excel treats leading zeros as numbers and strips them. 
+                    // We use ="value" format for Lot and Code columns to force text treatment in Excel.
+                    // Columns: 1(상위 Lot), 2(Code No.), 6(할당 Lot)
+                    if (rowIndex > 0 && (colIndex === 1 || colIndex === 2 || colIndex === 6) && text !== "") {
+                        return `="${text}"`;
+                    }
                     return `"${text}"`;
                 }).join(",");
                 csvContent += row + "\r\n";
