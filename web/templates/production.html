@@ -474,9 +474,12 @@
             });
 
             const targetQty = document.getElementById('targetQty').value;
+            const formulaFile = document.getElementById('formulaFileSelect').value || '';
+            // 사용자의 요청인 '첫 8글자'의 예시가 'BCE01_BOM'(9글자)이므로 9글자를 추출합니다.
+            const prefix = formulaFile.length >= 9 ? formulaFile.substring(0, 9) : 'BCE01_BOM';
             const now = new Date();
             const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-            const filename = `Production_BOM_Target${targetQty}_${dateStr}.csv`;
+            const filename = `${prefix}_${targetQty}_${dateStr}.csv`;
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
