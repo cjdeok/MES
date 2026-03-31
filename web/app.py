@@ -1172,6 +1172,14 @@ def generate_bom():
             "level1": [], "level2": [], "level3": []
         }
         
+        # 마스터 데이터 로드 (명칭 보정용)
+        master_data = {}
+        try:
+            with open(JSON_FILE, 'r', encoding='utf-8') as f:
+                master_data = json.load(f)
+        except Exception as e:
+            print(f"Error loading master data: {e}")
+
         for _, r in df.iterrows():
             lvl_raw = r.get('Level')
             if pd.isna(lvl_raw): continue
@@ -1181,6 +1189,12 @@ def generate_bom():
             name2 = str(r.get('생산LOT', '')).strip()
             final_name = name2 if name2 and len(name2) > len(name1) and name2.lower() != 'nan' else name1
             
+            # 마스터 데이터에서 실제 명칭이 있으면 우선 적용
+            mat_code = name2 if name2.lower() != 'nan' else ''
+            if mat_code and mat_code in master_data:
+                final_name = master_data[mat_code].get('제품명', final_name)
+            
+
             formula = str(r.get('수식 (Formula)', '')).strip()
             unit = str(r.get('단위', '')).strip()
             parent = str(r.get('상위 LOT 연결', '')).strip()
@@ -1284,6 +1298,14 @@ def generate_bom_allocated():
                 else:
                     lot_stocks[key] -= qty
 
+        # 마스터 데이터 로드 (명칭 보정용)
+        master_data = {}
+        try:
+            with open(JSON_FILE, 'r', encoding='utf-8') as f:
+                master_data = json.load(f)
+        except Exception as e:
+            print(f"Error loading master data: {e}")
+
         result = {
             "level0": {"제품명": f"전개 소스: {safe_filename}", "목표수량": target_qty},
             "level1": [], "level2": [], "level3": []
@@ -1297,6 +1319,11 @@ def generate_bom_allocated():
             name1 = str(r.get('명칭 / 구성품', '')).strip()
             name2 = str(r.get('생산LOT', '')).strip()
             final_name = name2 if name2 and len(name2) > len(name1) and name2.lower() != 'nan' else name1
+            
+            # 마스터 데이터에서 실제 명칭이 있으면 우선 적용
+            mat_code = name2 if name2.lower() != 'nan' else ''
+            if mat_code and mat_code in master_data:
+                final_name = master_data[mat_code].get('제품명', final_name)
             
             formula = str(r.get('수식 (Formula)', '')).strip()
             unit = str(r.get('단위', '')).strip()
@@ -1380,5 +1407,5 @@ def generate_bom_allocated():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=9001, debug=True)
 
