@@ -1,639 +1,245 @@
-<!DOCTYPE html>
-<html lang="ko">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MES 안전재고(100,000 tests)</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        /* ─── 테이블 검색/필터 ─── */
-        .toolbar {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
+{% set active_nav = 'material_info' %}
 
-        .search-box {
-            flex: 1;
-            min-width: 220px;
-            position: relative;
-        }
+{% block title %}MES 안전재고(100,000 tests) | Kinetic MES{% endblock %}
 
-        .search-box i {
-            position: absolute;
-            left: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
+{% block content %}
+<!-- Page Header -->
+<div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div>
+        <h1 class="text-3xl font-bold text-on-surface tracking-tight flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary text-4xl">inventory</span>
+            안전재고 모니터링
+        </h1>
+        <p class="text-slate-500 font-medium text-sm mt-2">100,000 tests 기준 원료 마스터 정보와 현재고 대비 안전재고 수준을 모니터링합니다.</p>
+    </div>
+</div>
 
-        .search-box input {
-            width: 100%;
-            padding: 0.7rem 1rem 0.7rem 2.6rem;
-            border-radius: var(--radius-sm);
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid var(--panel-border);
-            color: var(--text-main);
-            font-size: 0.95rem;
-            outline: none;
-            transition: all 0.2s;
-        }
+<!-- Stat Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="bg-surface-container-lowest border-l-4 border-primary border-y border-r border-white rounded-xl p-5 cloud-shadow flex items-center gap-4 transition-transform hover:-translate-y-1 duration-200">
+        <div class="w-12 h-12 rounded-lg bg-primary-fixed text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined">cubes</span>
+        </div>
+        <div>
+            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">등록 원료 수</h4>
+            <span class="text-2xl font-black text-slate-800" id="stat-total">-</span>
+        </div>
+    </div>
+    <div class="bg-surface-container-lowest border-l-4 border-green-500 border-y border-r border-white rounded-xl p-5 cloud-shadow flex items-center gap-4 transition-transform hover:-translate-y-1 duration-200">
+        <div class="w-12 h-12 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
+            <span class="material-symbols-outlined">check_circle</span>
+        </div>
+        <div>
+            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">안전재고 충족</h4>
+            <span class="text-2xl font-black text-slate-800" id="stat-ok">-</span>
+        </div>
+    </div>
+    <div class="bg-surface-container-lowest border-l-4 border-amber-500 border-y border-r border-white rounded-xl p-5 cloud-shadow flex items-center gap-4 transition-transform hover:-translate-y-1 duration-200">
+        <div class="w-12 h-12 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center">
+            <span class="material-symbols-outlined">warning</span>
+        </div>
+        <div>
+            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">안전재고 미달</h4>
+            <span class="text-2xl font-black text-slate-800" id="stat-warn">-</span>
+        </div>
+    </div>
+    <div class="bg-surface-container-lowest border-l-4 border-error border-y border-r border-white rounded-xl p-5 cloud-shadow flex items-center gap-4 transition-transform hover:-translate-y-1 duration-200">
+        <div class="w-12 h-12 rounded-lg bg-error-container text-on-error-container flex items-center justify-center">
+            <span class="material-symbols-outlined">cancel</span>
+        </div>
+        <div>
+            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">재고 없음</h4>
+            <span class="text-2xl font-black text-error" id="stat-zero">-</span>
+        </div>
+    </div>
+</div>
 
-        .search-box input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-        }
-
-        .search-box input::placeholder {
-            color: var(--text-muted);
-        }
-
-        .group-filter-btn {
-            padding: 0.55rem 1rem;
-            border-radius: var(--radius-sm);
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            letter-spacing: 0.04em;
-        }
-
-        .group-filter-btn:hover {
-            background: rgba(59, 130, 246, 0.12);
-            border-color: rgba(59, 130, 246, 0.4);
-            color: #93bbfc;
-        }
-
-        .group-filter-btn.active {
-            background: rgba(59, 130, 246, 0.2);
-            border-color: var(--primary);
-            color: #fff;
-        }
-
-        /* ─── 상단 요약 카드 ─── */
-        .stat-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .stat-card {
-            background: var(--panel-bg);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--panel-border);
-            border-radius: var(--radius-md);
-            padding: 1.2rem 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.5);
-        }
-
-        .stat-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: var(--radius-sm);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1.2rem;
-            flex-shrink: 0;
-        }
-
-        .stat-icon.blue {
-            background: rgba(59, 130, 246, 0.15);
-            color: var(--primary);
-        }
-
-        .stat-icon.green {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--success);
-        }
-
-        .stat-icon.amber {
-            background: rgba(245, 158, 11, 0.15);
-            color: var(--warning);
-        }
-
-        .stat-icon.red {
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--danger);
-        }
-
-        .stat-text h4 {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            font-weight: 500;
-            margin-bottom: 0.15rem;
-        }
-
-        .stat-text .stat-value {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: var(--text-main);
-        }
-
-        /* ─── 테이블 ─── */
-        .info-table-wrap {
-            padding: 1.5rem;
-            animation: fadeIn 0.5s ease-in forwards;
-        }
-
-        .info-table-wrap .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.2rem;
-        }
-
-        .info-table-wrap .panel-header h2 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-        }
-
-        .info-table-wrap .panel-header h2 i {
-            color: var(--primary);
-        }
-
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .info-table th {
-            position: sticky;
-            top: 0;
-            background: rgba(15, 23, 42, 0.95);
-            z-index: 2;
-            padding: 0.85rem 0.8rem;
-            font-size: 0.78rem;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: var(--text-muted);
-            font-weight: 600;
-            text-align: left;
-            border-bottom: 1px solid var(--panel-border);
-            white-space: nowrap;
-        }
-
-        .info-table td {
-            padding: 0.75rem 0.8rem;
-            font-size: 0.9rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            white-space: nowrap;
-        }
-
-        .info-table tbody tr {
-            transition: background 0.15s;
-        }
-
-        .info-table tbody tr:hover {
-            background: rgba(59, 130, 246, 0.06);
-        }
-
-        .info-table tbody tr.row-warning {
-            background: rgba(239, 68, 68, 0.06);
-        }
-
-        .info-table tbody tr.row-warning:hover {
-            background: rgba(239, 68, 68, 0.12);
-        }
-
-        .info-table .code-cell {
-            font-family: monospace;
-            font-size: 0.82rem;
-            background: rgba(59, 130, 246, 0.12);
-            color: #60a5fa;
-            padding: 0.2rem 0.5rem;
-            border-radius: 4px;
-            display: inline-block;
-        }
-
-        .info-table .price-cell {
-            font-weight: 600;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .info-table .safe-cell {
-            font-weight: 600;
-        }
-
-        .safe-ok {
-            color: var(--success);
-        }
-
-        .safe-warn {
-            color: var(--warning);
-        }
-
-        .safe-danger {
-            color: var(--danger);
-        }
-
-        .safe-na {
-            color: var(--text-muted);
-            font-weight: 400;
-        }
-
-        .stock-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            font-size: 0.78rem;
-            font-weight: 600;
-            padding: 0.2rem 0.6rem;
-            border-radius: 10px;
-        }
-
-        .stock-badge.ok {
-            background: rgba(16, 185, 129, 0.12);
-            color: var(--success);
-        }
-
-        .stock-badge.warn {
-            background: rgba(245, 158, 11, 0.12);
-            color: var(--warning);
-        }
-
-        .stock-badge.danger {
-            background: rgba(239, 68, 68, 0.12);
-            color: var(--danger);
-        }
-
-        .stock-badge.none {
-            background: rgba(148, 163, 184, 0.1);
-            color: var(--text-muted);
-        }
-
-        .table-scroll {
-            max-height: calc(100vh - 340px);
-            overflow-y: auto;
-            border-radius: var(--radius-sm);
-        }
-
-        .table-scroll::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .table-scroll::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .table-scroll::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 3px;
-        }
-
-        .table-scroll::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        .temp-badge {
-            font-size: 0.78rem;
-            padding: 0.15rem 0.5rem;
-            border-radius: 4px;
-            display: inline-block;
-        }
-
-        .temp-cold {
-            background: rgba(59, 130, 246, 0.12);
-            color: #60a5fa;
-        }
-
-        .temp-cool {
-            background: rgba(16, 185, 129, 0.12);
-            color: #34d399;
-        }
-
-        .temp-room {
-            background: rgba(245, 158, 11, 0.12);
-            color: #fbbf24;
-        }
-
-        /* Loading */
-        #table-loading {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-muted);
-        }
-
-        .no-data {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-muted);
-            font-size: 0.95rem;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="app-container">
-    <header class="top-header">
-        <a href="/" class="header-brand">
-            <img src="/static/img/logo.png" alt="Logo" class="brand-logo">
-            <span>생산관리팀 통합 관리</span>
-        </a>
-        <nav class="header-nav">
-            <a href="/" class="nav-btn">
-                <i class="fa-solid fa-house"></i>
-                재고현황
-            </a>
-            <a href="/material-info" class="nav-btn active">
-                <i class="fa-solid fa-list-ul"></i>
-                안전재고
-            </a>
-            <a href="/purchase-dashboard" class="nav-btn">
-                <i class="fa-solid fa-chart-line"></i>
-                구매 대시보드
-            </a>
-            <a href="/facilities" class="nav-btn">
-                <i class="fa-solid fa-tools"></i>
-                설비 관리
-            </a>
-            <a href="/inventory" class="nav-btn">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                원료상세검색
-            </a>
-            <a href="/raw-material" class="nav-btn">
-                <i class="fa-solid fa-flask"></i>
-                원재료관리
-            </a>
-            <a href="/producible" class="nav-btn">
-                <i class="fa-solid fa-flask-vial"></i>
-                생산가능수량
-            </a>
-                        <div class="nav-dropdown">
-                <a href="/production" class="nav-btn">
-                    <i class="fa-solid fa-industry"></i>
-                    생산 관리 <i class="fa-solid fa-chevron-down" style="font-size: 0.7rem; margin-left: 5px;"></i>
-                </a>
-                <div class="dropdown-content">
-                    <a href="/production"><i class="fa-solid fa-calculator"></i>생산 지시</a>
-                    <a href="/mo-management"><i class="fa-solid fa-file-contract"></i>MO 생성</a>
-                    <a href="/bom-calculator"><i class="fa-solid fa-sitemap"></i>BOM 계산기</a>
-                </div>
+<!-- Table Panel -->
+<section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white flex flex-col flex-1 min-h-[500px]">
+    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4 border-b border-surface-container-high pb-4">
+        <h2 class="text-xl font-bold text-on-surface flex items-center gap-2 whitespace-nowrap">
+            <span class="material-symbols-outlined text-primary">database</span> 원료 마스터 & 안전재고
+        </h2>
+        
+        <div class="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+            <div class="relative flex-1 lg:w-64">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                <input type="text" id="search-input" placeholder="원료 코드 또는 이름 검색..." autocomplete="off" 
+                       class="w-full bg-surface-container-low border border-transparent focus:border-primary focus:bg-white rounded-lg pl-10 pr-4 py-2 text-sm text-slate-700 transition-all outline-none">
             </div>
-            <a href="/finished-product" class="nav-btn">
-                <i class="fa-solid fa-box"></i>
-                완제품관리
-            </a>
-            <a href="/validation" class="nav-btn">
-                <i class="fa-solid fa-clipboard-check"></i>
-                밸리데이션
-            </a>
-            <a href="/calibration" class="nav-btn">
-                <i class="fa-solid fa-compass-drafting"></i>
-                검교정
-            </a>
-            <a href="/upload-usage" class="nav-btn">
-                <i class="fa-solid fa-file-arrow-up"></i>
-                사용량 업로드
-            </a>
-            <a href="/upload-receiving" class="nav-btn">
-                <i class="fa-solid fa-file-import"></i>
-                입고 업로드
-            </a>
-        </nav>
-    </header>
-
-        <main>
-            <!-- 요약 통계 카드 -->
-            <div class="stat-cards">
-                <div class="stat-card">
-                    <div class="stat-icon blue"><i class="fa-solid fa-cubes"></i></div>
-                    <div class="stat-text">
-                        <h4>등록 원료 수</h4>
-                        <span class="stat-value" id="stat-total">-</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon green"><i class="fa-solid fa-check-circle"></i></div>
-                    <div class="stat-text">
-                        <h4>안전재고 충족</h4>
-                        <span class="stat-value" id="stat-ok">-</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon amber"><i class="fa-solid fa-exclamation-triangle"></i></div>
-                    <div class="stat-text">
-                        <h4>안전재고 미달</h4>
-                        <span class="stat-value" id="stat-warn">-</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon red"><i class="fa-solid fa-circle-xmark"></i></div>
-                    <div class="stat-text">
-                        <h4>재고 없음</h4>
-                        <span class="stat-value" id="stat-zero">-</span>
-                    </div>
-                </div>
+            
+            <div class="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg">
+                <button class="group-filter-btn px-4 py-1.5 rounded-md text-sm font-bold bg-white shadow-sm text-primary transition-all" data-group="ALL">전체</button>
+                <button class="group-filter-btn px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all" data-group="B">BCM</button>
+                <button class="group-filter-btn px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all" data-group="C">CMA</button>
+                <button class="group-filter-btn px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all" data-group="E">EMA</button>
             </div>
-
-            <!-- 테이블 패널 -->
-            <div class="info-table-wrap glass-panel">
-                <div class="panel-header">
-                    <h2><i class="fa-solid fa-database"></i> 원료 마스터 & 안전재고</h2>
-                </div>
-                <div class="toolbar" style="margin-bottom: 1rem;">
-                    <div class="search-box">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" id="search-input" placeholder="원료 코드 또는 이름 검색..." autocomplete="off">
-                    </div>
-                    <button class="group-filter-btn active" data-group="ALL">전체</button>
-                    <button class="group-filter-btn" data-group="B">BCM</button>
-                    <button class="group-filter-btn" data-group="C">CMA</button>
-                    <button class="group-filter-btn" data-group="E">EMA</button>
-                </div>
-
-                <div class="table-scroll">
-                    <table class="info-table">
-                        <thead>
-                            <tr>
-                                <th>코드</th>
-                                <th>제품명</th>
-                                <th>Cat No.</th>
-                                <th>제조사</th>
-                                <th>포장단위</th>
-                                <th>단위</th>
-                                <th style="text-align:right;">단가 (₩)</th>
-                                <th style="text-align:right;">현재고</th>
-                                <th style="text-align:right;">안전재고</th>
-                                <th>상태</th>
-                                <th>보관온도</th>
-                                <th>보관장소</th>
-                            </tr>
-                        </thead>
-                        <tbody id="info-tbody">
-                            <tr>
-                                <td colspan="12" id="table-loading">
-                                    <i class="fa-solid fa-circle-notch fa-spin"></i> 데이터를 불러오는 중입니다...
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
+        </div>
     </div>
 
-    <script>
-        let allRows = [];
-        let activeGroup = 'ALL';
+    <!-- Table -->
+    <div class="overflow-x-auto border border-surface-variant rounded-xl hide-scrollbar flex-1 max-h-[calc(100vh-340px)]">
+        <table class="w-full text-left border-collapse">
+            <thead class="bg-surface-container-highest sticky top-0 z-10">
+                <tr class="text-[10px] font-bold text-slate-600 uppercase tracking-widest border-b border-surface-variant shadow-sm">
+                    <th class="py-3 px-4 whitespace-nowrap">코드</th>
+                    <th class="py-3 px-4 whitespace-nowrap min-w-[200px]">제품명</th>
+                    <th class="py-3 px-4 whitespace-nowrap">Cat No.</th>
+                    <th class="py-3 px-4 whitespace-nowrap">제조사</th>
+                    <th class="py-3 px-4 whitespace-nowrap">포장단위</th>
+                    <th class="py-3 px-4 whitespace-nowrap">단위</th>
+                    <th class="py-3 px-4 whitespace-nowrap text-right">단가 (₩)</th>
+                    <th class="py-3 px-4 whitespace-nowrap text-right">현재고</th>
+                    <th class="py-3 px-4 whitespace-nowrap text-right">안전재고</th>
+                    <th class="py-3 px-4 whitespace-nowrap text-center">상태</th>
+                    <th class="py-3 px-4 whitespace-nowrap">보관온도</th>
+                    <th class="py-3 px-4 whitespace-nowrap">보관장소</th>
+                </tr>
+            </thead>
+            <tbody id="info-tbody" class="text-sm divide-y divide-surface-container-low bg-white">
+                <tr><td colspan="12" class="text-center py-12 text-slate-400 font-medium"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 데이터를 불러오는 중입니다...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
 
-        document.addEventListener('DOMContentLoaded', loadMaterialInfo);
+{% block extra_scripts %}
+<script>
+    let allRows = [];
+    let activeGroup = 'ALL';
 
-        // 검색
-        document.getElementById('search-input').addEventListener('input', renderTable);
+    document.addEventListener('DOMContentLoaded', loadMaterialInfo);
 
-        // 그룹 필터
-        document.querySelectorAll('.group-filter-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.group-filter-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                activeGroup = btn.dataset.group;
-                renderTable();
+    // 검색
+    document.getElementById('search-input').addEventListener('input', renderTable);
+
+    // 그룹 필터
+    document.querySelectorAll('.group-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.group-filter-btn').forEach(b => {
+                b.className = 'group-filter-btn px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all';
             });
+            btn.className = 'group-filter-btn px-4 py-1.5 rounded-md text-sm font-bold bg-white shadow-sm text-primary transition-all';
+            activeGroup = btn.dataset.group;
+            renderTable();
+        });
+    });
+
+    async function loadMaterialInfo() {
+        try {
+            const res = await fetch('/api/material-info');
+            const result = await res.json();
+
+            if (result.status === 'success') {
+                allRows = result.data;
+                updateStats(allRows);
+                renderTable();
+            }
+        } catch (e) {
+            document.getElementById('info-tbody').innerHTML =
+                '<tr><td colspan="12" class="text-center py-12 text-error font-medium"><span class="material-symbols-outlined align-middle mr-2">error</span> 데이터를 불러올 수 없습니다.</td></tr>';
+        }
+    }
+
+    function updateStats(rows) {
+        document.getElementById('stat-total').textContent = rows.length;
+
+        let okCount = 0, warnCount = 0, zeroCount = 0;
+        rows.forEach(r => {
+            if (r.current_stock <= 0) zeroCount++;
+            else if (r.safe_stock !== null && r.current_stock < r.safe_stock) warnCount++;
+            else okCount++;
         });
 
-        async function loadMaterialInfo() {
-            try {
-                const res = await fetch('/api/material-info');
-                const result = await res.json();
+        document.getElementById('stat-ok').textContent = okCount;
+        document.getElementById('stat-warn').textContent = warnCount;
+        document.getElementById('stat-zero').textContent = zeroCount;
+    }
 
-                if (result.status === 'success') {
-                    allRows = result.data;
-                    updateStats(allRows);
-                    renderTable();
-                }
-            } catch (e) {
-                document.getElementById('info-tbody').innerHTML =
-                    '<tr><td colspan="12" class="no-data"><i class="fa-solid fa-triangle-exclamation"></i> 데이터를 불러올 수 없습니다.</td></tr>';
-            }
+    function renderTable() {
+        const tbody = document.getElementById('info-tbody');
+        const query = document.getElementById('search-input').value.toLowerCase().trim();
+
+        let filtered = allRows;
+
+        // 그룹 필터
+        if (activeGroup !== 'ALL') {
+            filtered = filtered.filter(r => r.item_code.charAt(0).toUpperCase() === activeGroup);
         }
 
-        function updateStats(rows) {
-            document.getElementById('stat-total').textContent = rows.length;
-
-            let okCount = 0, warnCount = 0, zeroCount = 0;
-            rows.forEach(r => {
-                if (r.current_stock <= 0) zeroCount++;
-                else if (r.safe_stock !== null && r.current_stock < r.safe_stock) warnCount++;
-                else okCount++;
-            });
-
-            document.getElementById('stat-ok').textContent = okCount;
-            document.getElementById('stat-warn').textContent = warnCount;
-            document.getElementById('stat-zero').textContent = zeroCount;
+        // 검색 필터
+        if (query) {
+            filtered = filtered.filter(r =>
+                r.item_code.toLowerCase().includes(query) ||
+                (r.product_name || '').toLowerCase().includes(query) ||
+                (r.cat_no || '').toLowerCase().includes(query) ||
+                (r.manufacturer || '').toLowerCase().includes(query)
+            );
         }
 
-        function renderTable() {
-            const tbody = document.getElementById('info-tbody');
-            const query = document.getElementById('search-input').value.toLowerCase().trim();
-
-            let filtered = allRows;
-
-            // 그룹 필터
-            if (activeGroup !== 'ALL') {
-                filtered = filtered.filter(r => r.item_code.charAt(0).toUpperCase() === activeGroup);
-            }
-
-            // 검색 필터
-            if (query) {
-                filtered = filtered.filter(r =>
-                    r.item_code.toLowerCase().includes(query) ||
-                    (r.product_name || '').toLowerCase().includes(query) ||
-                    (r.cat_no || '').toLowerCase().includes(query) ||
-                    (r.manufacturer || '').toLowerCase().includes(query)
-                );
-            }
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="12" class="no-data">검색 결과가 없습니다.</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = filtered.map((r, idx) => {
-                const stock = r.current_stock ?? 0;
-                const safe = r.safe_stock;
-                const isWarning = safe !== null && safe > 0 && stock < safe;
-                const isZero = stock <= 0;
-
-                // 상태 배지 결정
-                let badgeClass, badgeText, badgeIcon;
-                if (safe === null || safe === 0) {
-                    badgeClass = 'none';
-                    badgeText = '-';
-                    badgeIcon = '';
-                } else if (isZero) {
-                    badgeClass = 'danger';
-                    badgeText = '재고없음';
-                    badgeIcon = '<i class="fa-solid fa-circle-xmark"></i>';
-                } else if (isWarning) {
-                    badgeClass = 'warn';
-                    badgeText = '미달';
-                    badgeIcon = '<i class="fa-solid fa-exclamation"></i>';
-                } else {
-                    badgeClass = 'ok';
-                    badgeText = '충족';
-                    badgeIcon = '<i class="fa-solid fa-check"></i>';
-                }
-
-                // 보관온도 배지
-                let tempClass = 'temp-room';
-                if ((r.storage_temp || '').includes('-20') || (r.storage_temp || '').includes('이하')) {
-                    tempClass = 'temp-cold';
-                } else if ((r.storage_temp || '').includes('2~8') || (r.storage_temp || '').includes('냉장')) {
-                    tempClass = 'temp-cool';
-                }
-
-                // 안전재고 색상
-                let safeClass = 'safe-na';
-                if (safe !== null && safe > 0) {
-                    if (isZero) safeClass = 'safe-danger';
-                    else if (isWarning) safeClass = 'safe-warn';
-                    else safeClass = 'safe-ok';
-                }
-
-                // 현재고 색상
-                let stockColorClass = stock > 0 ? 'safe-ok' : (stock < 0 ? 'safe-danger' : 'safe-na');
-
-                const rowClass = (isWarning || isZero) && safe !== null && safe > 0 ? 'row-warning' : '';
-
-                return `<tr class="${rowClass}" style="animation: fadeIn 0.3s ease-in forwards ${Math.min(idx * 0.02, 0.5)}s; opacity:0;">
-                    <td><span class="code-cell">${r.item_code}</span></td>
-                    <td>${r.product_name || '-'}</td>
-                    <td style="color: var(--text-muted);">${r.cat_no || '-'}</td>
-                    <td>${r.manufacturer || '-'}</td>
-                    <td style="color: var(--text-muted); font-size:0.82rem;">${r.package_unit || '-'}</td>
-                    <td>${r.unit || '-'}</td>
-                    <td class="price-cell" style="text-align:right;">${r.unit_price ? '₩' + Number(r.unit_price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}) : '-'}</td>
-                    <td class="${stockColorClass}" style="text-align:right; font-weight:600;">${stock !== null ? stock.toLocaleString() : '-'}<span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.2rem;">${r.unit || ''}</span></td>
-                    <td class="${safeClass} safe-cell" style="text-align:right;">${safe !== null && safe > 0 ? safe.toLocaleString() : '-'}</td>
-                    <td><span class="stock-badge ${badgeClass}">${badgeIcon} ${badgeText}</span></td>
-                    <td><span class="temp-badge ${tempClass}">${r.storage_temp || '-'}</span></td>
-                    <td style="font-size:0.82rem;">${r.storage_location && r.storage_location !== '0' ? r.storage_location : '-'}</td>
-                </tr>`;
-            }).join('');
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="12" class="text-center py-12 text-slate-400 font-medium">검색 결과가 없습니다.</td></tr>';
+            return;
         }
-    </script>
-</body>
 
-</html>
+        tbody.innerHTML = filtered.map((r, idx) => {
+            const stock = r.current_stock ?? 0;
+            const safe = r.safe_stock;
+            const isWarning = safe !== null && safe > 0 && stock < safe;
+            const isZero = stock <= 0;
+
+            // 상태 배지 결정
+            let badgeHtml = '';
+            if (safe === null || safe === 0) {
+                badgeHtml = '<span class="text-slate-400 font-medium">-</span>';
+            } else if (isZero) {
+                badgeHtml = `<span class="bg-error-container text-on-error-container px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">cancel</span> 재고없음</span>`;
+            } else if (isWarning) {
+                badgeHtml = `<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">warning</span> 미달</span>`;
+            } else {
+                badgeHtml = `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">check_circle</span> 충족</span>`;
+            }
+
+            // 보관온도 배지
+            let tempClass = 'bg-amber-50 text-amber-600 border border-amber-200'; // room
+            if ((r.storage_temp || '').includes('-20') || (r.storage_temp || '').includes('이하')) {
+                tempClass = 'bg-blue-50 text-blue-600 border border-blue-200';
+            } else if ((r.storage_temp || '').includes('2~8') || (r.storage_temp || '').includes('냉장')) {
+                tempClass = 'bg-green-50 text-green-600 border border-green-200';
+            }
+            let tempHtml = `<span class="${tempClass} px-2 py-0.5 rounded text-[10px] font-bold tracking-wider">${r.storage_temp || '-'}</span>`;
+
+            // 안전재고 색상
+            let safeClass = 'text-slate-400 font-medium';
+            if (safe !== null && safe > 0) {
+                if (isZero) safeClass = 'text-error font-bold';
+                else if (isWarning) safeClass = 'text-amber-500 font-bold';
+                else safeClass = 'text-green-600 font-bold';
+            }
+
+            // 현재고 색상
+            let stockColorClass = stock > 0 ? 'text-green-600 font-bold' : (stock < 0 ? 'text-error font-bold' : 'text-slate-400 font-medium');
+
+            const rowClass = (isWarning || isZero) && safe !== null && safe > 0 ? 'bg-error-container/20 hover:bg-error-container/40' : 'bg-white hover:bg-surface-container-low/50';
+
+            return `<tr class="${rowClass} transition-colors border-b border-surface-container-low">
+                <td class="py-3 px-4 whitespace-nowrap"><span class="bg-surface-container-low text-primary px-2 py-1 rounded font-mono text-xs font-bold">${r.item_code}</span></td>
+                <td class="py-3 px-4 font-bold text-slate-700 min-w-[200px]">${r.product_name || '-'}</td>
+                <td class="py-3 px-4 text-xs text-slate-400 font-medium whitespace-nowrap">${r.cat_no || '-'}</td>
+                <td class="py-3 px-4 text-xs text-slate-600 whitespace-nowrap">${r.manufacturer || '-'}</td>
+                <td class="py-3 px-4 text-[10px] text-slate-400 uppercase whitespace-nowrap">${r.package_unit || '-'}</td>
+                <td class="py-3 px-4 text-[10px] text-slate-400 uppercase whitespace-nowrap">${r.unit || '-'}</td>
+                <td class="py-3 px-4 text-right font-medium text-slate-600 whitespace-nowrap">${r.unit_price ? '₩' + Number(r.unit_price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}) : '-'}</td>
+                <td class="py-3 px-4 text-right whitespace-nowrap"><span class="text-lg ${stockColorClass}">${stock !== null ? stock.toLocaleString() : '-'}</span> <span class="text-[10px] text-slate-400 ml-0.5">${r.unit || ''}</span></td>
+                <td class="py-3 px-4 text-right whitespace-nowrap ${safeClass}">${safe !== null && safe > 0 ? safe.toLocaleString() : '-'}</td>
+                <td class="py-3 px-4 text-center whitespace-nowrap">${badgeHtml}</td>
+                <td class="py-3 px-4 text-center whitespace-nowrap">${tempHtml}</td>
+                <td class="py-3 px-4 text-[10px] text-slate-500 font-medium whitespace-nowrap">${r.storage_location && r.storage_location !== '0' ? r.storage_location : '-'}</td>
+            </tr>`;
+        }).join('');
+    }
+</script>
+{% endblock %}

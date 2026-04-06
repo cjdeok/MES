@@ -1,232 +1,168 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MES 통합 관리 시스템 - 밸리데이션 계획</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body { margin: 0; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; }
-        .app-container { padding: calc(52px + 2rem) 2rem 2rem; }
-        .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius-lg); padding: 1.5rem; }
-        .status-badge { padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
-        .status-urgent { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
-        .status-soon { background: rgba(245, 158, 11, 0.2); color: #fbd38d; border: 1px solid rgba(245, 158, 11, 0.3); }
-        .status-safe { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
-        .filter-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
-        .filter-tab { padding: 0.5rem 1rem; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--text-muted); cursor: pointer; transition: all 0.2s; font-size: 0.875rem; }
-        .filter-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
-    </style>
-</head>
-<body>
-    <header class="top-header">
-        <a href="/" class="header-brand">
-            <img src="/static/img/logo.png" alt="Logo" class="brand-logo">
-            <span>생산관리팀 통합 관리</span>
-        </a>
-        <nav class="header-nav">
-            <a href="/" class="nav-btn">
-                <i class="fa-solid fa-house"></i>
-                재고현황
-            </a>
-            <a href="/material-info" class="nav-btn">
-                <i class="fa-solid fa-list-ul"></i>
-                안전재고
-            </a>
-            <a href="/purchase-dashboard" class="nav-btn">
-                <i class="fa-solid fa-chart-line"></i>
-                구매 대시보드
-            </a>
-            <a href="/facilities" class="nav-btn">
-                <i class="fa-solid fa-tools"></i>
-                설비 관리
-            </a>
-            <a href="/inventory" class="nav-btn">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                원료상세검색
-            </a>
-            <a href="/raw-material" class="nav-btn">
-                <i class="fa-solid fa-flask"></i>
-                원재료관리
-            </a>
-            <a href="/producible" class="nav-btn">
-                <i class="fa-solid fa-flask-vial"></i>
-                생산가능수량
-            </a>
-                        <div class="nav-dropdown">
-                <a href="/production" class="nav-btn">
-                    <i class="fa-solid fa-industry"></i>
-                    생산 관리 <i class="fa-solid fa-chevron-down" style="font-size: 0.7rem; margin-left: 5px;"></i>
-                </a>
-                <div class="dropdown-content">
-                    <a href="/production"><i class="fa-solid fa-calculator"></i>생산 지시</a>
-                    <a href="/mo-management"><i class="fa-solid fa-file-contract"></i>MO 생성</a>
-                    <a href="/bom-calculator"><i class="fa-solid fa-sitemap"></i>BOM 계산기</a>
-                </div>
-            </div>
-            <a href="/finished-product" class="nav-btn">
-                <i class="fa-solid fa-box"></i>
-                완제품관리
-            </a>
-            <a href="/validation" class="nav-btn active">
-                <i class="fa-solid fa-clipboard-check"></i>
-                밸리데이션
-            </a>
-            <a href="/calibration" class="nav-btn">
-                <i class="fa-solid fa-compass-drafting"></i>
-                검교정
-            </a>
-            <a href="/upload-usage" class="nav-btn">
-                <i class="fa-solid fa-file-arrow-up"></i>
-                사용량 업로드
-            </a>
-            <a href="/upload-receiving" class="nav-btn">
-                <i class="fa-solid fa-file-import"></i>
-                입고 업로드
-            </a>
-        </nav>
-    </header>
+{% extends "base.html" %}
 
-    <div class="app-container">
-        <div class="glass-panel">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <div>
-                    <h1 style="font-size: 1.5rem; margin: 0; color: #fff;">연간 밸리데이션 계획 (2026)</h1>
-                    <p style="color: var(--text-muted); margin: 0.25rem 0 0; font-size: 0.9rem;">장비 및 시설의 정기 점검 계획을 확인하세요.</p>
-                </div>
-            </div>
+{% set active_nav = 'validation' %}
 
-            <div class="filter-tabs" id="filter-tabs">
-                <div class="filter-tab active" data-filter="all">전체</div>
-                <div class="filter-tab" data-filter="1">1개월 이내</div>
-                <div class="filter-tab" data-filter="3">3개월 이내</div>
-                <div class="filter-tab" data-filter="6">6개월 이내</div>
-            </div>
+{% block title %}MES 통합 관리 시스템 - 밸리데이션 계획 | Kinetic MES{% endblock %}
 
-            <div class="table-container" style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; min-width: 1000px;">
-                    <thead>
-                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.08);">
-                            <th style="text-align: left; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">번호</th>
-                            <th style="text-align: left; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">대상 명칭</th>
-                            <th style="text-align: left; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">장비번호</th>
-                            <th style="text-align: left; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">주기</th>
-                            <th style="text-align: center; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">등급</th>
-                            <th style="text-align: left; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">최근 검사일</th>
-                            <th style="text-align: left; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">차기 계획일</th>
-                            <th style="text-align: center; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">수행처</th>
-                            <th style="text-align: center; padding: 1rem; color: #94a3b8; font-size: 0.8rem; font-weight: 600;">상태</th>
-                        </tr>
-                    </thead>
-                    <tbody id="plan-tbody">
-                        <!-- Data rows will be inserted here -->
-                    </tbody>
-                </table>
-            </div>
+{% block content %}
+<!-- Page Header -->
+<div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div>
+        <h1 class="text-3xl font-bold text-on-surface tracking-tight flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary text-4xl">rule_folder</span>
+            연간 밸리데이션 계획 (2026)
+        </h1>
+        <p class="text-slate-500 font-medium text-sm mt-2">장비 및 시설의 정기 밸리데이션/적격성 평가 일정을 추적하고 관리합니다.</p>
+    </div>
+</div>
+
+<!-- Main Panel -->
+<section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white flex flex-col min-h-[500px]">
+    
+    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4 border-b border-surface-container-high pb-4">
+        <h2 class="text-xl font-bold text-on-surface flex items-center gap-2 whitespace-nowrap">
+            <span class="material-symbols-outlined text-primary">event_note</span> 계획 및 진행 현황
+        </h2>
+        
+        <!-- Filter Tabs -->
+        <div class="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg" id="filter-tabs">
+            <button class="filter-tab px-4 py-1.5 rounded-md text-sm font-bold bg-white shadow-sm text-primary transition-all active-tab" data-filter="all">전체</button>
+            <button class="filter-tab px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all" data-filter="1">1개월 이내 <span class="bg-error-container text-on-error-container text-[10px] px-1.5 py-0.5 rounded ml-1">Urgent</span></button>
+            <button class="filter-tab px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all" data-filter="3">3개월 이내</button>
+            <button class="filter-tab px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all" data-filter="6">6개월 이내</button>
         </div>
     </div>
 
-    <script>
-        let allData = [];
-        let currentFilter = 'all';
+    <!-- Table -->
+    <div class="overflow-x-auto border border-surface-variant rounded-xl hide-scrollbar flex-1 max-h-[calc(100vh-340px)]">
+        <table class="w-full text-left border-collapse bg-white">
+            <thead class="bg-surface-container-highest sticky top-0 z-10 shadow-sm border-b border-surface-variant">
+                <tr class="text-[10px] font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap">
+                    <th class="py-3 px-4">번호</th>
+                    <th class="py-3 px-4 min-w-[200px]">대상 명칭</th>
+                    <th class="py-3 px-4">장비번호</th>
+                    <th class="py-3 px-4">주기</th>
+                    <th class="py-3 px-4 text-center">등급</th>
+                    <th class="py-3 px-4">최근 검사일</th>
+                    <th class="py-3 px-4">차기 계획일</th>
+                    <th class="py-3 px-4 text-center">수행처</th>
+                    <th class="py-3 px-4 text-center">임박 상태</th>
+                </tr>
+            </thead>
+            <tbody id="plan-tbody" class="text-sm divide-y divide-surface-container-low">
+                <tr><td colspan="9" class="text-center py-12 text-slate-400 font-medium"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 데이터를 불러오는 중입니다...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
 
-        async function fetchPlan() {
-            try {
-                const res = await fetch('/api/validation/plan');
-                const result = await res.json();
-                if (result.status === 'success') {
-                    allData = result.data;
-                    renderTable();
-                }
-            } catch (err) {
-                console.error("Fetch Error:", err);
-            }
-        }
+{% block extra_scripts %}
+<script>
+    let allData = [];
+    let currentFilter = 'all';
 
-        function parseDate(dateStr) {
-            if (!dateStr) return null;
-            // "2026.11.05 이내" -> "2026.11.05"
-            const match = dateStr.match(/\d{4}\.\d{2}\.\d{2}/);
-            if (match) {
-                return new Date(match[0].replace(/\./g, '-'));
-            }
-            return null;
-        }
-
-        function renderTable() {
-            const tbody = document.getElementById('plan-tbody');
-            tbody.innerHTML = '';
-
-            const now = new Date();
-            
-            const filteredData = allData.filter(item => {
-                if (currentFilter === 'all') return true;
-                
-                const planDate = parseDate(item.next_plan_date);
-                if (!planDate) return false;
-                
-                const monthsDiff = (planDate - now) / (1000 * 60 * 60 * 24 * 30);
-                return monthsDiff <= parseInt(currentFilter) && monthsDiff >= -1; // 지난 것은 안보여줄지 고민하다 일단 -1개월까지 포함
-            });
-
-            if (filteredData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 3rem; color: #64748b;">해당 조건에 맞는 계획이 없습니다.</td></tr>';
-                return;
-            }
-
-            filteredData.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
-                
-                const planDate = parseDate(item.next_plan_date);
-                let statusHtml = '';
-                let dateColor = '';
-
-                if (planDate) {
-                    const daysDiff = Math.ceil((planDate - now) / (1000 * 60 * 60 * 24));
-                    if (daysDiff <= 30) {
-                        statusHtml = '<span class="status-badge status-urgent">1개월 이내</span>';
-                        dateColor = '#fca5a5';
-                    } else if (daysDiff <= 90) {
-                        statusHtml = '<span class="status-badge status-soon">3개월 이내</span>';
-                        dateColor = '#fbd38d';
-                    } else if (daysDiff <= 180) {
-                        statusHtml = '<span class="status-badge status-safe">6개월 이내</span>';
-                    } else {
-                        statusHtml = '<span class="status-badge status-safe" style="opacity:0.6;">안정</span>';
-                    }
-                } else {
-                    statusHtml = '<span class="status-badge" style="background:rgba(255,255,255,0.05); color:#94a3b8;">정보없음</span>';
-                }
-
-                tr.innerHTML = `
-                    <td style="padding: 1rem; color: #94a3b8;">${item.no}</td>
-                    <td style="padding: 1rem; color: #fff; font-weight: 500;">${item.target_name}</td>
-                    <td style="padding: 1rem; color: #94a3b8;">${item.equipment_no}</td>
-                    <td style="padding: 1rem; color: #94a3b8;">${item.validation_cycle}</td>
-                    <td style="padding: 1rem; text-align: center;"><span class="badge" style="background: rgba(255,255,255,0.05); font-size: 0.7rem;">${item.safety_grade}</span></td>
-                    <td style="padding: 1rem; color: #94a3b8;">${item.last_inspection_date}</td>
-                    <td style="padding: 1rem; color: ${dateColor || '#fff'}; font-weight: 600;">${item.next_plan_date}</td>
-                    <td style="padding: 1rem; text-align: center; color: #94a3b8;">${item.performer}</td>
-                    <td style="padding: 1rem; text-align: center;">${statusHtml}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        document.getElementById('filter-tabs').addEventListener('click', (e) => {
-            const tab = e.target.closest('.filter-tab');
-            if (tab) {
-                document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                currentFilter = tab.dataset.filter;
+    async function fetchPlan() {
+        try {
+            const res = await fetch('/api/validation/plan');
+            const result = await res.json();
+            if (result.status === 'success') {
+                allData = result.data;
                 renderTable();
             }
+        } catch (err) {
+            document.getElementById('plan-tbody').innerHTML = '<tr><td colspan="9" class="text-center py-12 text-error font-medium">데이터를 불러올 수 없습니다.</td></tr>';
+            console.error("Fetch Error:", err);
+        }
+    }
+
+    function parseDate(dateStr) {
+        if (!dateStr) return null;
+        // "2026.11.05 이내" -> "2026.11.05"
+        const match = dateStr.match(/\d{4}\.\d{2}\.\d{2}/);
+        if (match) {
+            return new Date(match[0].replace(/\./g, '-'));
+        }
+        return null;
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('plan-tbody');
+        tbody.innerHTML = '';
+
+        const now = new Date();
+        
+        const filteredData = allData.filter(item => {
+            if (currentFilter === 'all') return true;
+            
+            const planDate = parseDate(item.next_plan_date);
+            if (!planDate) return false;
+            
+            const monthsDiff = (planDate - now) / (1000 * 60 * 60 * 24 * 30);
+            return monthsDiff <= parseInt(currentFilter) && monthsDiff >= -1; 
         });
 
-        fetchPlan();
-    </script>
-</body>
-</html>
+        if (filteredData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-12 text-slate-400 font-medium">해당 조건에 맞는 계획이 없습니다.</td></tr>';
+            return;
+        }
+
+        filteredData.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-50 transition-colors";
+            
+            const planDate = parseDate(item.next_plan_date);
+            let statusHtml = '';
+            let dateColorClass = 'text-slate-600';
+            let rowWarnClass = '';
+
+            if (planDate) {
+                const daysDiff = Math.ceil((planDate - now) / (1000 * 60 * 60 * 24));
+                if (daysDiff <= 30) {
+                    statusHtml = '<span class="bg-error-container text-on-error-container px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">warning</span> 1개월 이내</span>';
+                    dateColorClass = 'text-error font-black';
+                    rowWarnClass = 'bg-error-container/10';
+                } else if (daysDiff <= 90) {
+                    statusHtml = '<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">schedule</span> 3개월 이내</span>';
+                    dateColorClass = 'text-amber-600 font-bold';
+                } else if (daysDiff <= 180) {
+                    statusHtml = '<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">check_circle</span> 6개월 이내</span>';
+                } else {
+                    statusHtml = '<span class="bg-surface-container-low text-slate-400 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1 w-fit mx-auto">안정</span>';
+                }
+            } else {
+                statusHtml = '<span class="bg-surface-container-low text-slate-400 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest w-fit mx-auto block">정보없음</span>';
+            }
+
+            if (rowWarnClass) tr.classList.add(rowWarnClass.split('/')[0], 'bg-opacity-10'); // fallback but tailwind handles it
+
+            tr.innerHTML = `
+                <td class="py-4 px-4 text-xs font-mono text-slate-400 font-bold whitespace-nowrap">${item.no}</td>
+                <td class="py-4 px-4 font-bold text-slate-700 min-w-[200px]">${item.target_name}</td>
+                <td class="py-4 px-4 text-xs text-primary font-mono font-bold whitespace-nowrap">${item.equipment_no}</td>
+                <td class="py-4 px-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 whitespace-nowrap">${item.validation_cycle}</td>
+                <td class="py-4 px-4 text-center whitespace-nowrap"><span class="bg-slate-100 text-slate-500 px-2 py-1 rounded-full text-[10px] font-bold shadow-sm">${item.safety_grade}</span></td>
+                <td class="py-4 px-4 text-xs font-medium text-slate-500 whitespace-nowrap">${item.last_inspection_date}</td>
+                <td class="py-4 px-4 text-sm ${dateColorClass} whitespace-nowrap">${item.next_plan_date}</td>
+                <td class="py-4 px-4 text-center whitespace-nowrap text-xs font-medium text-slate-600">${item.performer}</td>
+                <td class="py-4 px-4 text-center whitespace-nowrap">${statusHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    document.getElementById('filter-tabs').addEventListener('click', (e) => {
+        const tab = e.target.closest('.filter-tab');
+        if (tab) {
+            document.querySelectorAll('.filter-tab').forEach(t => {
+                t.className = 'filter-tab px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all';
+            });
+            tab.className = 'filter-tab px-4 py-1.5 rounded-md text-sm font-bold bg-white shadow-sm text-primary transition-all active-tab';
+            currentFilter = tab.dataset.filter;
+            renderTable();
+        }
+    });
+
+    fetchPlan();
+</script>
+{% endblock %}

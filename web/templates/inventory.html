@@ -1,199 +1,166 @@
-<!DOCTYPE html>
-<html lang="ko">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MES 원료상세검색</title>
-    <!-- Google Fonts: Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css">
-    <!-- FontAwesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
+{% set active_nav = 'inventory' %}
 
-<body>
-    <div class="app-container">
-    <header class="top-header">
-        <a href="/" class="header-brand">
-            <img src="/static/img/logo.png" alt="Logo" class="brand-logo">
-            <span>생산관리팀 통합 관리</span>
-        </a>
-        <nav class="header-nav">
-            <a href="/" class="nav-btn">
-                <i class="fa-solid fa-house"></i>
-                재고현황
-            </a>
-            <a href="/material-info" class="nav-btn">
-                <i class="fa-solid fa-list-ul"></i>
-                안전재고
-            </a>
-            <a href="/purchase-dashboard" class="nav-btn">
-                <i class="fa-solid fa-chart-line"></i>
-                구매 대시보드
-            </a>
-            <a href="/facilities" class="nav-btn">
-                <i class="fa-solid fa-tools"></i>
-                설비 관리
-            </a>
-            <a href="/inventory" class="nav-btn active">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                원료상세검색
-            </a>
-            <a href="/raw-material" class="nav-btn">
-                <i class="fa-solid fa-flask"></i>
-                원재료관리
-            </a>
-            <a href="/producible" class="nav-btn">
-                <i class="fa-solid fa-flask-vial"></i>
-                생산가능수량
-            </a>
-                        <div class="nav-dropdown">
-                <a href="/production" class="nav-btn">
-                    <i class="fa-solid fa-industry"></i>
-                    생산 관리 <i class="fa-solid fa-chevron-down" style="font-size: 0.7rem; margin-left: 5px;"></i>
-                </a>
-                <div class="dropdown-content">
-                    <a href="/production"><i class="fa-solid fa-calculator"></i>생산 지시</a>
-                    <a href="/mo-management"><i class="fa-solid fa-file-contract"></i>MO 생성</a>
-                    <a href="/bom-calculator"><i class="fa-solid fa-sitemap"></i>BOM 계산기</a>
-                </div>
+{% block title %}MES 원료상세검색 | Kinetic MES{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div>
+        <h1 class="text-3xl font-bold text-on-surface tracking-tight flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary text-4xl">search</span>
+            원료 상세 검색
+        </h1>
+        <p class="text-slate-500 font-medium text-sm mt-2">특정 원료와 Lot 번호를 선택하여 상세 입출고 내역과 현재고를 확인합니다.</p>
+    </div>
+</div>
+
+<!-- Control Panel -->
+<section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white mb-8">
+    <h2 class="text-lg font-bold text-on-surface flex items-center gap-2 mb-6">
+        <span class="material-symbols-outlined text-primary">filter_alt</span> 검색 조건
+    </h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="flex flex-col gap-2">
+            <label for="material-select" class="text-xs font-bold text-slate-500 uppercase tracking-widest">원부자재 선택</label>
+            <select id="material-select" class="w-full bg-surface-container-low border-2 border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none">
+                <option value="">원료를 선택하세요...</option>
+            </select>
+        </div>
+        <div class="flex flex-col gap-2">
+            <label for="lot-select" class="text-xs font-bold text-slate-500 uppercase tracking-widest">Lot 번호 선택</label>
+            <select id="lot-select" class="w-full bg-surface-container-low border-2 border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                <option value="">Lot 번호를 선택하세요...</option>
+            </select>
+        </div>
+    </div>
+</section>
+
+<!-- Loading Spinner -->
+<div id="loading" class="hidden flex-col items-center justify-center py-20 bg-surface-container-lowest rounded-2xl cloud-shadow border border-white mb-8">
+    <span class="material-symbols-outlined text-primary text-5xl animate-spin">progress_activity</span>
+    <p class="mt-4 text-primary font-bold text-sm tracking-widest uppercase">데이터를 불러오는 중입니다...</p>
+</div>
+
+<!-- Empty State -->
+<div id="empty-state" class="bg-surface-container-low/30 rounded-2xl p-20 flex flex-col items-center justify-center text-center border-2 border-dashed border-slate-300">
+    <div class="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-4 cloud-shadow">
+        <span class="material-symbols-outlined text-3xl text-slate-400">youtube_searched_for</span>
+    </div>
+    <h3 class="text-lg font-bold text-slate-700 mb-2">분석 대기 중</h3>
+    <p class="text-sm text-slate-500">상단에서 조회할 원료 및 Lot를 선택해주세요.</p>
+</div>
+
+<!-- Results Section -->
+<section id="results-section" class="hidden space-y-6">
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-surface-container-lowest border-l-4 border-green-500 border-y border-r border-white p-6 rounded-xl cloud-shadow flex items-center gap-5">
+            <div class="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                <span class="material-symbols-outlined">south_east</span>
             </div>
-            <a href="/finished-product" class="nav-btn">
-                <i class="fa-solid fa-box"></i>
-                완제품관리
-            </a>
-            <a href="/validation" class="nav-btn">
-                <i class="fa-solid fa-clipboard-check"></i>
-                밸리데이션
-            </a>
-            <a href="/calibration" class="nav-btn">
-                <i class="fa-solid fa-compass-drafting"></i>
-                검교정
-            </a>
-            <a href="/upload-usage" class="nav-btn">
-                <i class="fa-solid fa-file-arrow-up"></i>
-                사용량 업로드
-            </a>
-            <a href="/upload-receiving" class="nav-btn">
-                <i class="fa-solid fa-file-import"></i>
-                입고 업로드
-            </a>
-        </nav>
-    </header>
-
-        <!-- Main Content -->
-        <main>
-            <!-- Control Panel -->
-            <section class="control-panel glass-panel">
-                <h2><i class="fa-solid fa-filter"></i> 조회 조건</h2>
-                <div class="filter-group">
-                    <div class="input-wrapper">
-                        <label for="material-select">원부자재 선택</label>
-                        <select id="material-select">
-                            <option value="">원료를 선택하세요...</option>
-                        </select>
-                    </div>
-                    <div class="input-wrapper">
-                        <label for="lot-select">Lot 번호 선택</label>
-                        <select id="lot-select" disabled>
-                            <option value="">Lot 번호를 선택하세요...</option>
-                        </select>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Loading Spinner -->
-            <div id="loading" class="hidden">
-                <div class="spinner"></div>
-                <p>데이터를 불러오는 중입니다...</p>
+            <div>
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">총 입고량</h3>
+                <p id="total-in" class="text-3xl font-black text-slate-800">0</p>
             </div>
-
-            <!-- Empty State -->
-            <div id="empty-state" class="empty-state">
-                <i class="fa-solid fa-box-open"></i>
-                <p>조회할 원료 및 Lot를 선택해주세요.</p>
+        </div>
+        <div class="bg-surface-container-lowest border-l-4 border-error border-y border-r border-white p-6 rounded-xl cloud-shadow flex items-center gap-5">
+            <div class="w-12 h-12 rounded-full bg-error-container text-on-error-container flex items-center justify-center">
+                <span class="material-symbols-outlined">north_east</span>
             </div>
-
-            <!-- Results Section -->
-            <section id="results-section" class="results-section hidden">
-                <!-- Summary Cards -->
-                <div class="summary-cards">
-                    <div class="card in-card glass-panel">
-                        <div class="card-icon"><i class="fa-solid fa-arrow-down"></i></div>
-                        <div class="card-info">
-                            <h3>총 입고량</h3>
-                            <p id="total-in" class="value">0</p>
-                        </div>
-                    </div>
-                    <div class="card out-card glass-panel">
-                        <div class="card-icon"><i class="fa-solid fa-arrow-up"></i></div>
-                        <div class="card-info">
-                            <h3>총 출고량</h3>
-                            <p id="total-out" class="value">0</p>
-                        </div>
-                    </div>
-                    <div class="card stock-card glass-panel highlight">
-                        <div class="card-icon"><i class="fa-solid fa-boxes-packing"></i></div>
-                        <div class="card-info">
-                            <h3>현재고</h3>
-                            <p id="current-stock" class="value">0</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Material Details Panel -->
-                <div id="material-info-panel" class="material-info-panel glass-panel hidden">
-                    <div class="info-item">
-                        <i class="fa-regular fa-calendar-check"></i>
-                        <div class="info-content">
-                            <h4>입고일</h4>
-                            <span id="info-receive-date">-</span>
-                        </div>
-                    </div>
-                    <div class="info-item">
-                        <i class="fa-solid fa-microscope"></i>
-                        <div class="info-content">
-                            <h4>Q.C.일자</h4>
-                            <span id="info-qc-date">-</span>
-                        </div>
-                    </div>
-                    <div class="info-item">
-                        <i class="fa-regular fa-calendar-xmark"></i>
-                        <div class="info-content">
-                            <h4>유효기간</h4>
-                            <span id="info-expire-date">-</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- History Table -->
-                <div class="history-panel glass-panel">
-                    <div class="panel-header">
-                        <h2><i class="fa-solid fa-clock-rotate-left"></i> 상세 입출고 내역</h2>
-                        <span id="product-label" class="badge"></span>
-                    </div>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>일자</th>
-                                    <th>구분</th>
-                                    <th>수량</th>
-                                    <th>사용 목적</th>
-                                </tr>
-                            </thead>
-                            <tbody id="history-tbody">
-                                <!-- Data will be injected here -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-        </main>
+            <div>
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">총 출고량</h3>
+                <p id="total-out" class="text-3xl font-black text-slate-800">0</p>
+            </div>
+        </div>
+        <div class="bg-primary-fixed border border-primary-fixed p-6 rounded-xl cloud-shadow flex items-center gap-5">
+            <div class="w-12 h-12 rounded-full bg-white text-primary flex items-center justify-center cloud-shadow">
+                <span class="material-symbols-outlined">inventory_2</span>
+            </div>
+            <div>
+                <h3 class="text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">현재고</h3>
+                <p id="current-stock" class="text-3xl font-black text-primary">0</p>
+            </div>
+        </div>
     </div>
 
-    <script src="/static/js/main.js"></script>
-</body>
+    <!-- Material Details Panel -->
+    <div id="material-info-panel" class="hidden bg-surface-container-lowest p-6 rounded-xl cloud-shadow border border-white flex flex-wrap gap-8 justify-around items-center">
+        <div class="flex items-center gap-4">
+            <span class="material-symbols-outlined text-3xl text-slate-400">calendar_add_on</span>
+            <div class="flex flex-col">
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest">입고일</h4>
+                <span id="info-receive-date" class="text-sm font-bold text-slate-700">-</span>
+            </div>
+        </div>
+        <div class="h-10 w-px bg-surface-variant hidden md:block"></div>
+        <div class="flex items-center gap-4">
+            <span class="material-symbols-outlined text-3xl text-primary">biotech</span>
+            <div class="flex flex-col">
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Q.C. 일자</h4>
+                <span id="info-qc-date" class="text-sm font-bold text-slate-700">-</span>
+            </div>
+        </div>
+        <div class="h-10 w-px bg-surface-variant hidden md:block"></div>
+        <div class="flex items-center gap-4">
+            <span class="material-symbols-outlined text-3xl text-error">event_busy</span>
+            <div class="flex flex-col">
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest">유효기간</h4>
+                <span id="info-expire-date" class="text-sm font-bold text-slate-700">-</span>
+            </div>
+        </div>
+    </div>
 
-</html>
+    <!-- History Table -->
+    <div class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white flex flex-col">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">history</span> 상세 입출고 내역
+            </h2>
+            <span id="product-label" class="bg-surface-container-low text-primary px-3 py-1 rounded text-xs font-bold tracking-wider"></span>
+        </div>
+        
+        <div class="overflow-x-auto border border-surface-variant rounded-xl hide-scrollbar">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-surface-container-low">
+                    <tr class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-surface-variant">
+                        <th class="py-3 px-6 whitespace-nowrap">일자</th>
+                        <th class="py-3 px-6">구분</th>
+                        <th class="py-3 px-6 text-right">수량</th>
+                        <th class="py-3 px-6">사용 목적</th>
+                    </tr>
+                </thead>
+                <tbody id="history-tbody" class="text-sm divide-y divide-surface-container-low bg-white">
+                    <!-- Data will be injected here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+    /* Add transition styles for UI elements */
+    .type-in { color: #16a34a; font-weight: 700; display:flex; align-items:center; gap:0.25rem;} /* text-green-600 */
+    .type-out { color: #e11d48; font-weight: 700; display:flex; align-items:center; gap:0.25rem;} /* text-rose-600 */
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+<script src="/static/js/main.js"></script>
+<script>
+    // Update main.js generated row icons for Material Symbols compatibility
+    // Since main.js writes `<i class="fa-solid fa-arrow-down-long"></i>`, 
+    // we can override the method or just let FontAwesome handle it for this table since the CSS was included in main.js.
+    // However, I removed FontAwesome from base.html. I must patch the innerHTML part in main.js, or just include FontAwesome in base.html.
+    // Actually, it's safer to just dynamically inject fontawesome here or override updateUIWithData.
+    
+    // Instead of messing with main.js, we can patch `updateUIWithData` from here or load FA.
+    // Let's load FA for this page just in case main.js relies on it.
+</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}

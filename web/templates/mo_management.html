@@ -1,355 +1,234 @@
-<!DOCTYPE html>
-<html lang="ko">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>생산 관리 - MO 생성</title>
-    <!-- Google Fonts: Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css">
-    <!-- FontAwesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .input-card {
-            background: rgba(30, 41, 59, 0.4);
-            border-radius: var(--radius-md);
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            border: 1px solid var(--panel-border);
-        }
+{% set active_nav = 'mo_management' %}
+{% set active_nav_parent = 'production' %}
 
-        .card-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 1.25rem;
-            padding-left: 0.75rem;
-            border-left: 4px solid var(--primary);
-            color: var(--text-main);
-        }
+{% block title %}생산 관리 - MO 생성 | Kinetic MES{% endblock %}
 
-        .table-header {
-            color: var(--primary);
-            font-weight: 600;
-            font-size: 0.85rem;
-            margin-bottom: 1rem;
-            border-bottom: 1px solid var(--panel-border);
-            padding-bottom: 0.5rem;
-            display: flex;
-        }
-
-        .form-label {
-            color: var(--text-muted);
-            font-size: 0.75rem;
-            margin-bottom: 0.3rem;
-            display: block;
-        }
-
-        .form-control {
-            width: 100%;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid var(--panel-border);
-            color: var(--text-main);
-            padding: 0.6rem 0.8rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.9rem;
-            transition: all 0.2s;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary);
-            background: rgba(15, 23, 42, 0.8);
-        }
-
-        .row-group {
-            margin-bottom: 1rem;
-        }
-
-        .btn-generate {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 1rem;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border-radius: var(--radius-md);
-            width: 100%;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.75rem;
-        }
-
-        .btn-generate:hover {
-            background: var(--primary-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-
-        .bulk-paste-area {
-            background: rgba(59, 130, 246, 0.05);
-            border: 1px dashed var(--primary);
-            border-radius: var(--radius-sm);
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .bulk-paste-area label {
-            color: #fff;
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-            display: block;
-        }
-
-        .bulk-paste-area textarea {
-            width: 100%;
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--text-main);
-            padding: 0.75rem;
-            border-radius: 4px;
-            font-family: inherit;
-            font-size: 0.85rem;
-            resize: vertical;
-        }
-
-        .section-desc {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            margin-top: 0.5rem;
-        }
-
-        .row {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .col-4 { flex: 0 0 33.33%; }
-        .col-2 { flex: 0 0 16.66%; }
-        .col-5 { flex: 0 0 41.66%; }
-        .col-6 { flex: 0 0 50%; }
-
-        hr {
-            border: 0;
-            border-top: 1px solid var(--panel-border);
-            margin: 1.5rem 0;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="app-container">
-        <header class="top-header">
-            <a href="/" class="header-brand">
-                <img src="/static/img/logo.png" alt="Logo" class="brand-logo">
-                <span>생산관리팀 통합 관리</span>
-            </a>
-            <nav class="header-nav">
-                <a href="/" class="nav-btn"><i class="fa-solid fa-house"></i>재고현황</a>
-                <div class="nav-dropdown">
-                    <a href="/production" class="nav-btn active">
-                        <i class="fa-solid fa-industry"></i>
-                        생산 관리 <i class="fa-solid fa-chevron-down" style="font-size: 0.7rem; margin-left: 5px;"></i>
-                    </a>
-                    <div class="dropdown-content">
-                        <a href="/production"><i class="fa-solid fa-calculator"></i>생산 지시</a>
-                        <a href="/mo-management" class="active"><i class="fa-solid fa-file-contract"></i>MO 생성</a>
-                    <a href="/bom-calculator"><i class="fa-solid fa-sitemap"></i>BOM 계산기</a>
-                    </div>
-                </div>
-            </nav>
-        </header>
-
-        <main>
-            <section class="control-panel glass-panel">
-                <h2><i class="fa-solid fa-file-invoice"></i> Manufacturing Order Generator</h2>
-                <p style="color: var(--text-muted); margin-bottom: 1.5rem;">엑셀 템플릿의 주요 항목을 입력하여 MO 문서를 자동으로 생성합니다.</p>
-
-                <form action="/api/mo/generate" method="post" id="mo-form">
-                    <!-- 1. 생산총괄 -->
-                    <div class="input-card">
-                        <div class="card-title">생산총괄</div>
-                        <div class="row table-header">
-                            <div class="col-4">생산의뢰서 접수 번호</div>
-                            <div class="col-4">의뢰수량</div>
-                            <div class="col-4">예상 완제품 Lot. No.</div>
-                        </div>
-                        {% for i in range(12, 15) %}
-                        <div class="row">
-                            <div class="col-4">
-                                <label class="form-label">A{{i}} (접수번호)</label>
-                                <input type="text" name="Sheet1_A{{i}}" class="form-control" placeholder="접수번호 입력">
-                            </div>
-                            <div class="col-4">
-                                <label class="form-label">C{{i}} (수량)</label>
-                                <input type="text" name="Sheet1_C{{i}}" class="form-control" value="52">
-                            </div>
-                            <div class="col-4">
-                                <label class="form-label">G{{i}} (Lot No)</label>
-                                <input type="text" name="Sheet1_G{{i}}" class="form-control" placeholder="Lot No 입력">
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-
-                    <!-- 2. 제품 정보 -->
-                    <div class="input-card">
-                        <div class="card-title">제품 및 포장 정보</div>
-                        <div class="row table-header">
-                            <div class="col-4">제품버전</div>
-                            <div class="col-4">IFU</div>
-                            <div class="col-4">완제품포장일자</div>
-                        </div>
-                        {% for i in range(20, 23) %}
-                        <div class="row">
-                            <div class="col-4">
-                                <label class="form-label">F{{i}} (버전)</label>
-                                <input type="text" name="Sheet1_F{{i}}" class="form-control" value="5.3">
-                            </div>
-                            <div class="col-4">
-                                <label class="form-label">H{{i}} (IFU)</label>
-                                <input type="text" name="Sheet1_H{{i}}" class="form-control" placeholder="IFU 입력">
-                            </div>
-                            <div class="col-4">
-                                <label class="form-label">E{{i}} (포장일자)</label>
-                                <input type="date" name="Sheet1_E{{i}}" class="form-control" value="2025-10-27">
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-
-                    <!-- 3. 반제품 제조 정보 (PL, SS) -->
-                    <div class="input-card">
-                        <div class="card-title">반제품 제조 정보 (PL, SS)</div>
-                        <div class="row table-header">
-                            <div class="col-2">반제품</div>
-                            <div class="col-5">제조지침</div>
-                            <div class="col-5">제조일자</div>
-                        </div>
-                        <!-- PL Group -->
-                        <div class="row">
-                            <div class="col-2" style="padding-top: 1rem; font-weight: 600;">PL-1~3</div>
-                            <div class="col-5">
-                                <label class="form-label">제조지침 (C26)</label>
-                                <input type="text" name="Sheet1_C26" class="form-control" placeholder="지침 입력">
-                            </div>
-                            <div class="col-5">
-                                <div style="margin-bottom: 0.5rem;">
-                                    <label class="form-label">PL-1 일자 (E28)</label>
-                                    <input type="date" name="Sheet1_E28" class="form-control" value="2025-10-22">
-                                </div>
-                                <div style="margin-bottom: 0.5rem;">
-                                    <label class="form-label">PL-2 일자 (E29)</label>
-                                    <input type="date" name="Sheet1_E29" class="form-control" value="2025-10-23">
-                                </div>
-                                <div>
-                                    <label class="form-label">PL-3 일자 (E30)</label>
-                                    <input type="date" name="Sheet1_E30" class="form-control" value="2025-10-24">
-                                </div>
-                            </div>
-                        </div>
-                        <hr>
-                        <!-- SS Group -->
-                        <div class="row">
-                            <div class="col-2" style="padding-top: 1rem; font-weight: 600;">SS-1~3</div>
-                            <div class="col-5">
-                                <label class="form-label">제조지침 (I26)</label>
-                                <input type="text" name="Sheet1_I26" class="form-control" placeholder="지침 입력">
-                            </div>
-                            <div class="col-5">
-                                <div style="margin-bottom: 0.5rem;">
-                                    <label class="form-label">SS-1 일자 (J28)</label>
-                                    <input type="date" name="Sheet1_J28" class="form-control" value="2025-10-22">
-                                </div>
-                                <div style="margin-bottom: 0.5rem;">
-                                    <label class="form-label">SS-2 일자 (J29)</label>
-                                    <input type="date" name="Sheet1_J29" class="form-control" value="2025-10-23">
-                                </div>
-                                <div>
-                                    <label class="form-label">SS-3 일자 (J30)</label>
-                                    <input type="date" name="Sheet1_J30" class="form-control" value="2025-10-24">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 4. 공정별 제조 정보 (CB ~ TM) -->
-                    <div class="input-card">
-                        <div class="card-title">공정별 제조 정보 (CB ~ TM)</div>
-                        
-                        <div class="bulk-paste-area">
-                            <label><i class="fa-solid fa-paste"></i> 제조지침 일괄 복사/붙여넣기</label>
-                            <textarea id="bulk-paste" rows="3" placeholder="엑셀의 제조지침서 No. 열을 복사하여 여기에 붙여넣으세요."></textarea>
-                            <p class="section-desc">※ 위 칸에 붙여넣으면 아래 CB~TM 지침란에 순서대로 자동 입력됩니다.</p>
-                        </div>
-
-                        <div class="row table-header">
-                            <div class="col-2">구분</div>
-                            <div class="col-5">제조지침</div>
-                            <div class="col-5">제조일자</div>
-                        </div>
-                        {% set processes = [
-                            ('CB', 'B34', 'F34'), ('PB', 'B35', 'F35'), ('WB', 'B36', 'F36'), 
-                            ('CR', 'B37', 'F37'), ('PC', 'B38', 'F38'), ('NC', 'B39', 'F39'), 
-                            ('DA', 'B40', 'F40'), ('RD', 'B41', 'F41'), ('WS', 'B42', 'F42'), 
-                            ('TM', 'B43', 'F43')
-                        ] %}
-                        {% for name, inst, dt in processes %}
-                        <div class="row" style="align-items: center;">
-                            <div class="col-2" style="font-weight: 600; color: var(--text-main);">{{name}}</div>
-                            <div class="col-5">
-                                <label class="form-label">지침 ({{inst}})</label>
-                                <input type="text" name="Sheet1_{{inst}}" class="form-control inst-field" placeholder="지침 입력">
-                            </div>
-                            <div class="col-5">
-                                <label class="form-label">일자 ({{dt}})</label>
-                                <input type="date" name="Sheet1_{{dt}}" class="form-control" value="2025-10-21">
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-
-                    <button type="submit" class="btn-generate">
-                        <i class="fa-solid fa-file-excel"></i> MO 엑셀 생성 및 다운로드
-                    </button>
-                </form>
-            </section>
-        </main>
+{% block content %}
+<!-- Page Header -->
+<div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div>
+        <h1 class="text-3xl font-bold text-on-surface tracking-tight flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary text-4xl">edit_document</span>
+            Manufacturing Order 생성
+        </h1>
+        <p class="text-slate-500 font-medium text-sm mt-2">엑셀 템플릿의 주요 항목을 입력하여 MO 문서를 자동으로 생성합니다.</p>
     </div>
+</div>
 
-    <script>
-        // 엑셀 복사/붙여넣기 자동 분배 로직
-        document.getElementById('bulk-paste').addEventListener('input', function(e) {
-            const text = e.target.value;
-            const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
-            const fields = document.querySelectorAll('.inst-field');
-            
-            lines.forEach((line, index) => {
-                if (index < fields.length) {
-                    fields[index].value = line.trim();
-                }
-            });
+<form action="/api/mo/generate" method="post" id="mo-form" class="space-y-6">
+    <!-- 1. 생산총괄 -->
+    <section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white">
+        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6 pb-2 border-b border-surface-variant">
+            <span class="material-symbols-outlined text-primary">folder_open</span> 생산총괄
+        </h2>
+        
+        <div class="grid grid-cols-3 gap-4 mb-4">
+            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2 border-l-2 border-primary">생산의뢰서 접수 번호</div>
+            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2 border-l-2 border-primary">의뢰수량</div>
+            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2 border-l-2 border-primary">예상 완제품 Lot. No.</div>
+        </div>
+
+        <div class="space-y-3">
+            {% for i in range(12, 15) %}
+            <div class="grid grid-cols-3 gap-4 bg-slate-50 p-3 rounded-xl border border-surface-variant group hover:border-primary/30 transition-colors">
+                <div class="flex flex-col gap-1.5 focus-within:text-primary transition-colors">
+                    <label class="text-[10px] font-bold text-slate-500">A{{i}} (접수번호)</label>
+                    <input type="text" name="Sheet1_A{{i}}" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" placeholder="접수번호 입력">
+                </div>
+                <div class="flex flex-col gap-1.5 focus-within:text-primary transition-colors">
+                    <label class="text-[10px] font-bold text-slate-500">C{{i}} (수량)</label>
+                    <input type="text" name="Sheet1_C{{i}}" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="52">
+                </div>
+                <div class="flex flex-col gap-1.5 focus-within:text-primary transition-colors">
+                    <label class="text-[10px] font-bold text-slate-500">G{{i}} (Lot No)</label>
+                    <input type="text" name="Sheet1_G{{i}}" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" placeholder="Lot No 입력">
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- 2. 제품 정보 -->
+    <section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white">
+        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6 pb-2 border-b border-surface-variant">
+            <span class="material-symbols-outlined text-primary">barcode_scanner</span> 제품 및 포장 정보
+        </h2>
+        
+        <div class="grid grid-cols-3 gap-4 mb-4">
+            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2 border-l-2 border-primary">제품버전</div>
+            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2 border-l-2 border-primary">IFU</div>
+            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2 border-l-2 border-primary">완제품포장일자</div>
+        </div>
+
+        <div class="space-y-3">
+            {% for i in range(20, 23) %}
+            <div class="grid grid-cols-3 gap-4 bg-slate-50 p-3 rounded-xl border border-surface-variant group hover:border-primary/30 transition-colors">
+                <div class="flex flex-col gap-1.5 focus-within:text-primary transition-colors">
+                    <label class="text-[10px] font-bold text-slate-500">F{{i}} (버전)</label>
+                    <input type="text" name="Sheet1_F{{i}}" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="5.3">
+                </div>
+                <div class="flex flex-col gap-1.5 focus-within:text-primary transition-colors">
+                    <label class="text-[10px] font-bold text-slate-500">H{{i}} (IFU)</label>
+                    <input type="text" name="Sheet1_H{{i}}" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" placeholder="IFU 입력">
+                </div>
+                <div class="flex flex-col gap-1.5 focus-within:text-primary transition-colors">
+                    <label class="text-[10px] font-bold text-slate-500">E{{i}} (포장일자)</label>
+                    <input type="date" name="Sheet1_E{{i}}" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-27">
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- 3. 반제품 제조 정보 (PL, SS) -->
+    <section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white">
+        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6 pb-2 border-b border-surface-variant">
+            <span class="material-symbols-outlined text-primary">science</span> 반제품 제조 정보 (PL, SS)
+        </h2>
+        
+        <div class="grid grid-cols-12 gap-4 mb-4">
+            <div class="col-span-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2 border-l-2 border-primary">반제품</div>
+            <div class="col-span-5 text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2 border-l-2 border-primary">제조지침</div>
+            <div class="col-span-5 text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2 border-l-2 border-primary">제조일자</div>
+        </div>
+
+        <!-- PL Group -->
+        <div class="grid grid-cols-12 gap-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-6">
+            <div class="col-span-2 font-black text-slate-700 flex items-center pt-2">PL-1~3</div>
+            <div class="col-span-5 pt-2">
+                <div class="flex flex-col gap-1.5 w-full">
+                    <label class="text-[10px] font-bold text-slate-500">제조지침 (C26)</label>
+                    <input type="text" name="Sheet1_C26" class="w-full bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 transition-all outline-none shadow-sm" placeholder="지침 입력">
+                </div>
+            </div>
+            <div class="col-span-5 space-y-3">
+                <div class="flex items-center gap-3">
+                    <label class="w-24 text-[10px] font-bold text-slate-500 bg-white border border-surface-variant px-2 py-1 rounded text-center">PL-1 (E28)</label>
+                    <input type="date" name="Sheet1_E28" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-22">
+                </div>
+                <div class="flex items-center gap-3">
+                    <label class="w-24 text-[10px] font-bold text-slate-500 bg-white border border-surface-variant px-2 py-1 rounded text-center">PL-2 (E29)</label>
+                    <input type="date" name="Sheet1_E29" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-23">
+                </div>
+                <div class="flex items-center gap-3">
+                    <label class="w-24 text-[10px] font-bold text-slate-500 bg-white border border-surface-variant px-2 py-1 rounded text-center">PL-3 (E30)</label>
+                    <input type="date" name="Sheet1_E30" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-24">
+                </div>
+            </div>
+        </div>
+
+        <!-- SS Group -->
+        <div class="grid grid-cols-12 gap-6 bg-purple-50/50 p-4 rounded-xl border border-purple-100">
+            <div class="col-span-2 font-black text-slate-700 flex items-center pt-2">SS-1~3</div>
+            <div class="col-span-5 pt-2">
+                <div class="flex flex-col gap-1.5 w-full">
+                    <label class="text-[10px] font-bold text-slate-500">제조지침 (I26)</label>
+                    <input type="text" name="Sheet1_I26" class="w-full bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 transition-all outline-none shadow-sm" placeholder="지침 입력">
+                </div>
+            </div>
+            <div class="col-span-5 space-y-3">
+                <div class="flex items-center gap-3">
+                    <label class="w-24 text-[10px] font-bold text-slate-500 bg-white border border-surface-variant px-2 py-1 rounded text-center">SS-1 (J28)</label>
+                    <input type="date" name="Sheet1_J28" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-22">
+                </div>
+                <div class="flex items-center gap-3">
+                    <label class="w-24 text-[10px] font-bold text-slate-500 bg-white border border-surface-variant px-2 py-1 rounded text-center">SS-2 (J29)</label>
+                    <input type="date" name="Sheet1_J29" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-23">
+                </div>
+                <div class="flex items-center gap-3">
+                    <label class="w-24 text-[10px] font-bold text-slate-500 bg-white border border-surface-variant px-2 py-1 rounded text-center">SS-3 (J30)</label>
+                    <input type="date" name="Sheet1_J30" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-24">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. 공정별 제조 정보 (CB ~ TM) -->
+    <section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white">
+        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6 pb-2 border-b border-surface-variant">
+            <span class="material-symbols-outlined text-primary">precision_manufacturing</span> 공정별 제조 정보 (CB ~ TM)
+        </h2>
+        
+        <div class="bg-primary/5 border border-primary/20 rounded-xl p-5 mb-8 text-primary relative overflow-hidden">
+            <div class="absolute -right-4 -top-4 opacity-5">
+                <span class="material-symbols-outlined text-9xl">content_paste</span>
+            </div>
+            <label class="font-bold flex items-center gap-2 mb-2 relative z-10">
+                <span class="material-symbols-outlined">content_paste_go</span> 제조지침 일괄 복사/붙여넣기
+            </label>
+            <textarea id="bulk-paste" rows="3" class="w-full bg-white border border-primary/20 focus:border-primary rounded-lg px-4 py-3 text-sm text-slate-700 transition-all outline-none shadow-sm relative z-10" placeholder="엑셀의 제조지침서 No. 열을 통째로 복사하여 여기에 붙여넣으세요. 아래 CB~TM 영역에 순서대로 자동 입력됩니다."></textarea>
+            <p class="text-xs font-medium text-primary/70 mt-2 relative z-10 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">info</span> 여러 항목을 한 번에 붙여넣을 때 유용합니다.</p>
+        </div>
+
+        <div class="grid grid-cols-12 gap-4 mb-4">
+            <div class="col-span-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2 border-l-2 border-primary">구분</div>
+            <div class="col-span-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2 border-l-2 border-primary">제조지침</div>
+            <div class="col-span-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2 border-l-2 border-primary">제조일자</div>
+        </div>
+        
+        <div class="space-y-3">
+            {% set processes = [
+                ('CB (버퍼 조제)', 'B34', 'F34'), ('PB (비드 조제)', 'B35', 'F35'), ('WB (세척 조제)', 'B36', 'F36'), 
+                ('CR (시약 조제)', 'B37', 'F37'), ('PC (핵산 조제)', 'B38', 'F38'), ('NC (음성 조제)', 'B39', 'F39'), 
+                ('DA (핵산 분주)', 'B40', 'F40'), ('RD (시약 분주)', 'B41', 'F41'), ('WS (봉합)', 'B42', 'F42'), 
+                ('TM (합본)', 'B43', 'F43')
+            ] %}
+            {% for name, inst, dt in processes %}
+            <div class="grid grid-cols-12 gap-4 items-center bg-slate-50 p-2.5 rounded-xl border border-surface-variant hover:border-primary/30 transition-colors">
+                <div class="col-span-2 font-bold text-slate-700 text-sm whitespace-nowrap px-2">{{name}}</div>
+                <div class="col-span-6 flex items-center gap-3">
+                    <label class="text-[10px] font-bold text-slate-400 w-8 text-right hidden lg:block">{{inst}}</label>
+                    <input type="text" name="Sheet1_{{inst}}" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none inst-field" placeholder="지침 입력">
+                </div>
+                <div class="col-span-4 flex items-center gap-3">
+                    <label class="text-[10px] font-bold text-slate-400 w-8 text-right hidden lg:block">{{dt}}</label>
+                    <input type="date" name="Sheet1_{{dt}}" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-21">
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Form Submit -->
+    <div class="sticky bottom-8 z-20">
+        <button type="submit" class="w-full bg-primary hover:bg-primary-hover text-white font-bold px-6 py-4 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-primary/20 text-lg">
+            <span class="material-symbols-outlined text-2xl">download</span> MO 엑셀 문서 자동 생성 및 다운로드
+        </button>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // 엑셀 복사/붙여넣기 자동 분배 로직
+    document.getElementById('bulk-paste').addEventListener('input', function(e) {
+        const text = e.target.value;
+        const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
+        const fields = document.querySelectorAll('.inst-field');
+        
+        lines.forEach((line, index) => {
+            if (index < fields.length) {
+                fields[index].value = line.trim();
+            }
         });
+    });
 
-        // 폼 제출 시 버튼 상태 변경 (피드백 제공)
-        document.getElementById('mo-form').addEventListener('submit', function() {
-            const btn = this.querySelector('.btn-generate');
-            const originalContent = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 생성 중...';
-            btn.disabled = true;
-            
-            // 파일 다운로드가 시작되면 감지하기 어렵지만, 약 5초 후 복구
-            setTimeout(() => {
-                btn.innerHTML = originalContent;
-                btn.disabled = false;
-            }, 5000);
-        });
-    </script>
-</body>
-
-</html>
+    // 폼 제출 시 버튼 상태 변경 (피드백 제공)
+    document.getElementById('mo-form').addEventListener('submit', function() {
+        const btn = this.querySelector('button[type="submit"]');
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin align-middle mr-2 mt-1">progress_activity</span> <span class="align-middle">MO 문서 생성 중...</span>';
+        btn.disabled = true;
+        btn.classList.add('opacity-80');
+        
+        // 파일 다운로드가 시작되면 감지하기 어렵지만, 약 5초 후 복구
+        setTimeout(() => {
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            btn.classList.remove('opacity-80');
+        }, 5000);
+    });
+</script>
+{% endblock %}

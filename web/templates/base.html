@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html class="light" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MES 통합 관리 시스템{% endblock %}</title>
+    
+    <!-- Kinetic Light Design System Requirements -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-fixed": "#ffdcc6",
+                        "surface-container": "#eceef0",
+                        "secondary": "#495e8a",
+                        "surface-container-high": "#e6e8ea",
+                        "on-secondary-container": "#405682",
+                        "secondary-fixed": "#d8e2ff",
+                        "primary-fixed": "#d8e2ff",
+                        "surface": "#f7f9fb",
+                        "tertiary": "#924700",
+                        "primary": "#0058be",
+                        "primary-container": "#2170e4",
+                        "on-secondary-fixed": "#001a42",
+                        "on-primary-fixed": "#001a42",
+                        "on-surface": "#191c1e",
+                        "surface-container-lowest": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#f2f4f6",
+                        "surface-container-highest": "#e0e3e5",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#e0e3e5",
+                        "secondary-container": "#b6ccff",
+                        "on-secondary-fixed-variant": "#304671"
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .kinetic-gradient {
+            background: linear-gradient(135deg, #0058be 0%, #2170e4 100%);
+        }
+        .glass-overlay {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+        }
+        .cloud-shadow {
+            box-shadow: 0 12px 40px hsla(210, 20%, 10%, 0.06);
+        }
+        /* Tailwind Utilities Customization */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body class="bg-surface text-on-surface antialiased overflow-hidden">
+    <!-- TopNavBar -->
+    <header class="w-full h-16 fixed top-0 z-50 bg-[#ffffff] border-b border-surface-container-high shadow-sm flex items-center justify-between px-6 font-sans text-sm">
+        <a href="/" class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded bg-primary-fixed flex items-center justify-center text-primary font-bold shadow-inner">
+                <span class="material-symbols-outlined" style="font-size: 20px;">all_inclusive</span>
+            </div>
+            <span class="text-xl font-bold tracking-tight text-on-surface">Kinetic MES</span>
+        </a>
+        <div class="flex items-center space-x-4">
+            <div class="bg-surface-container-low px-3 py-1.5 rounded-lg flex items-center gap-2">
+                <span class="material-symbols-outlined text-slate-400 text-lg">search</span>
+                <input class="bg-transparent border-none focus:ring-0 text-sm w-48 outline-none placeholder:text-slate-400" placeholder="메뉴, 코드 검색..." type="text"/>
+            </div>
+            <button class="material-symbols-outlined text-slate-500 hover:text-primary transition-colors">notifications</button>
+            <button class="material-symbols-outlined text-slate-500 hover:text-primary transition-colors">settings</button>
+            <div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-fixed flex items-center justify-center font-bold">
+                U
+            </div>
+        </div>
+    </header>
+
+    {% set nav = active_nav | default('index') %}
+    <div class="flex pt-16 h-screen w-full">
+        <!-- SideNavBar -->
+        <aside class="w-64 flex-shrink-0 bg-surface-container-lowest border-r border-surface-container-high flex flex-col p-4 overflow-y-auto hide-scrollbar text-sm font-medium space-y-1">
+            <a href="/" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'index' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">warehouse</span> 재고현황
+            </a>
+            <a href="/material-info" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'material_info' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">inventory</span> 안전재고
+            </a>
+            <a href="/purchase-dashboard" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'purchase_dashboard' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">analytics</span> 구매 대시보드
+            </a>
+            <a href="/facilities" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'facilities' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">build_circle</span> 설비 관리
+            </a>
+            <a href="/inventory" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'inventory' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">search</span> 원료상세검색
+            </a>
+            <a href="/raw-material" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'raw_material' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">science</span> 원재료관리
+            </a>
+            <a href="/producible" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'producible' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">biotech</span> 생산가능수량
+            </a>
+            
+            <div class="py-2">
+                <div class="px-4 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">생산 관리</div>
+                <a href="/production" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 my-1 {% if nav == 'production' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                    <span class="material-symbols-outlined text-lg">calculate</span> 생산 지시
+                </a>
+                <a href="/mo-management" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 my-1 {% if nav == 'mo_management' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                    <span class="material-symbols-outlined text-lg">description</span> MO 생성
+                </a>
+                <a href="/bom-calculator" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 my-1 {% if nav == 'bom_calculator' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                    <span class="material-symbols-outlined text-lg">account_tree</span> BOM 전개
+                </a>
+            </div>
+            
+            <a href="/finished-product" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'finished_product' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">package_2</span> 완제품관리
+            </a>
+            <a href="/validation" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'validation' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">fact_check</span> 밸리데이션
+            </a>
+            <a href="/calibration" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'calibration' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">architecture</span> 검교정
+            </a>
+            <a href="/upload-usage" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'upload_usage' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">upload_file</span> 사용량 업로드
+            </a>
+            <a href="/upload-receiving" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 mb-8 {% if nav == 'upload_receiving' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">move_to_inbox</span> 입고 업로드
+            </a>
+        </aside>
+
+        <!-- Main Content Canvas -->
+        <main class="flex-1 p-8 overflow-y-auto">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

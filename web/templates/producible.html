@@ -1,453 +1,130 @@
-<!DOCTYPE html>
-<html lang="ko">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MES 통합 관리 시스템 - 생산가능수량</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --sidebar-width: 230px;
-        }
+{% set active_nav = 'producible' %}
 
-        body {
-            margin: 0;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            min-height: 100vh;
-        }
+{% block title %}MES 통합 관리 시스템 - 생산가능수량 | Kinetic MES{% endblock %}
 
-        /* ─── Sidebar ─── */
-        .sidebar {
-            position: fixed;
-            top: 0;
-            right: 0;
-            width: var(--sidebar-width);
-            height: 100vh;
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            border-left: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            flex-direction: column;
-            padding: 2rem 1.2rem;
-            gap: 1rem;
-            box-sizing: border-box;
-            z-index: 10;
-        }
-
-        .sidebar-title {
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 0.5rem;
-        }
-
-
-        /* ─── Main Content ─── */
-        .main-content {
-            margin-right: var(--sidebar-width);
-            padding: 2rem 2.5rem;
-            padding-top: calc(52px + 2rem);
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .page-title {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 0.4rem;
-        }
-
-        .page-subtitle {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-            margin-bottom: 2rem;
-        }
-
-        /* ─── Panel ─── */
-        .panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .panel-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1.2rem;
-        }
-
-        .panel-header h2 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-        }
-
-        .panel-header h2 i {
-            color: var(--primary);
-        }
-
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        /* 범례 */
-        .legend {
-            display: flex;
-            align-items: center;
-            gap: 0.9rem;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
-        }
-
-        .legend-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
-
-        .refresh-btn {
-            background: rgba(255, 255, 255, 0.07);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--text-muted);
-            padding: 0.4rem 0.9rem;
-            border-radius: var(--radius-md);
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-
-        .refresh-btn:hover {
-            background: rgba(59, 130, 246, 0.15);
-            color: white;
-        }
-
-        /* ─── Grid ─── */
-        .prod-grid {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 0.75rem;
-            overflow: visible;
-        }
-
-        /* 그룹 헤더 */
-        .group-header {
-            grid-column: 1 / -1;
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            padding: 0.4rem 0 0.2rem;
-            margin-top: 0.5rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .group-header:first-child {
-            margin-top: 0;
-        }
-
-        .group-badge {
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            background: rgba(59, 130, 246, 0.18);
-            color: #60a5fa;
-            padding: 0.18rem 0.55rem;
-            border-radius: 4px;
-        }
-
-        .group-label {
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: var(--text-muted);
-        }
-
-        /* ─── 카드 ─── */
-        .prod-card {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: var(--radius-md);
-            padding: 0.85rem 1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.3rem;
-            transition: background 0.2s, border-color 0.2s, transform 0.15s;
-        }
-
-        .prod-card:hover {
-            background: rgba(255, 255, 255, 0.08);
-            transform: translateY(-2px);
-        }
-
-        /* 상태별 좌측 테두리 */
-        .prod-card.ok {
-            border-left: 3px solid #10b981;
-        }
-
-        .prod-card.warn {
-            border-left: 3px solid #f59e0b;
-        }
-
-        .prod-card.none {
-            border-left: 3px solid #ef4444;
-        }
-
-        .card-code {
-            font-family: monospace;
-            font-size: 0.78rem;
-            background: rgba(59, 130, 246, 0.12);
-            color: #60a5fa;
-            padding: 0.15rem 0.45rem;
-            border-radius: 4px;
-            align-self: flex-start;
-        }
-
-        .card-name {
-            font-size: 0.85rem;
-            color: var(--text-main);
-            font-weight: 500;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* 재고 표시 */
-        .card-stock-row {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            margin-top: 0.1rem;
-        }
-
-        .card-stock-val {
-            color: var(--text-main);
-            font-weight: 500;
-        }
-
-        /* 생산가능 kit수 */
-        .card-kit {
-            font-size: 1.15rem;
-            font-weight: 700;
-            margin-top: 0.3rem;
-        }
-
-        .card-kit .kit-unit {
-            font-size: 0.75rem;
-            font-weight: 400;
-            margin-left: 0.2rem;
-            color: inherit;
-            opacity: 0.75;
-        }
-
-        .kit-ok {
-            color: #10b981;
-        }
-
-        .kit-warn {
-            color: #f59e0b;
-        }
-
-        .kit-none {
-            color: #ef4444;
-        }
-
-        /* 로딩 */
-        #prod-loading {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-muted);
-        }
-    </style>
-</head>
-
-<body>
-    <header class="top-header">
-        <a href="/" class="header-brand">
-            <img src="/static/img/logo.png" alt="Logo" class="brand-logo">
-            <span>생산관리팀 통합 관리</span>
-        </a>
-        <nav class="header-nav">
-            <a href="/" class="nav-btn">
-                <i class="fa-solid fa-house"></i>
-                재고현황
-            </a>
-            <a href="/material-info" class="nav-btn">
-                <i class="fa-solid fa-list-ul"></i>
-                안전재고
-            </a>
-            <a href="/purchase-dashboard" class="nav-btn">
-                <i class="fa-solid fa-chart-line"></i>
-                구매 대시보드
-            </a>
-            <a href="/facilities" class="nav-btn">
-                <i class="fa-solid fa-tools"></i>
-                설비 관리
-            </a>
-            <a href="/inventory" class="nav-btn">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                원료상세검색
-            </a>
-            <a href="/raw-material" class="nav-btn">
-                <i class="fa-solid fa-flask"></i>
-                원재료관리
-            </a>
-            <a href="/producible" class="nav-btn active">
-                <i class="fa-solid fa-flask-vial"></i>
-                생산가능수량
-            </a>
-                        <div class="nav-dropdown">
-                <a href="/production" class="nav-btn">
-                    <i class="fa-solid fa-industry"></i>
-                    생산 관리 <i class="fa-solid fa-chevron-down" style="font-size: 0.7rem; margin-left: 5px;"></i>
-                </a>
-                <div class="dropdown-content">
-                    <a href="/production"><i class="fa-solid fa-calculator"></i>생산 지시</a>
-                    <a href="/mo-management"><i class="fa-solid fa-file-contract"></i>MO 생성</a>
-                    <a href="/bom-calculator"><i class="fa-solid fa-sitemap"></i>BOM 계산기</a>
-                </div>
-            </div>
-            <a href="/finished-product" class="nav-btn">
-                <i class="fa-solid fa-box"></i>
-                완제품관리
-            </a>
-            <a href="/validation" class="nav-btn">
-                <i class="fa-solid fa-clipboard-check"></i>
-                밸리데이션
-            </a>
-            <a href="/calibration" class="nav-btn">
-                <i class="fa-solid fa-compass-drafting"></i>
-                검교정
-            </a>
-            <a href="/upload-usage" class="nav-btn">
-                <i class="fa-solid fa-file-arrow-up"></i>
-                사용량 업로드
-            </a>
-            <a href="/upload-receiving" class="nav-btn">
-                <i class="fa-solid fa-file-import"></i>
-                입고 업로드
-            </a>
-        </nav>
-    </header>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        <h1 class="page-title">
-            <i class="fa-solid fa-flask-vial" style="color:var(--primary); margin-right:0.5rem;"></i>
-            생산가능수량
+{% block content %}
+<!-- Page Header -->
+<div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div>
+        <h1 class="text-3xl font-bold text-on-surface tracking-tight flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary text-4xl">biotech</span>
+            생산가능수량 분석
         </h1>
-        <p class="page-subtitle">현재 재고 기준, 각 원료로 생산 가능한 최대 Kit 수량입니다.</p>
+        <p class="text-slate-500 font-medium text-sm mt-2">현재 창고에 보유 중인 원료를 기준으로 각 항목별 생산 가능한 최대 Kit 수량입니다.</p>
+    </div>
+</div>
 
-        <div class="panel glass-panel">
-            <div class="panel-header">
-                <h2><i class="fa-solid fa-chart-simple"></i> 원료별 최대 생산가능 Kit</h2>
-                <div class="header-right">
-                    <div class="legend">
-                        <span class="legend-item"><span class="legend-dot" style="background:#10b981;"></span>256kit
-                            이상</span>
-                        <span class="legend-item"><span class="legend-dot"
-                                style="background:#f59e0b;"></span>1~255kit</span>
-                        <span class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span>생산
-                            불가</span>
-                    </div>
-                    <button class="refresh-btn" id="refresh-btn">
-                        <i class="fa-solid fa-rotate-right"></i> 새로고침
-                    </button>
-                </div>
+<!-- Main Panel -->
+<section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white mb-8 min-h-[500px]">
+    <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4 border-b border-surface-container-high pb-4">
+        <h2 class="text-xl font-bold text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">analytics</span> 원료별 최대 생산가능 Kit 수
+        </h2>
+        <div class="flex items-center gap-6">
+            <!-- Legend -->
+            <div class="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-slate-500">
+                <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-green-500"></div>256+</div>
+                <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-amber-500"></div>1~255</div>
+                <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-error"></div>불가</div>
             </div>
-
-            <div class="prod-grid" id="prod-grid">
-                <div id="prod-loading"><i class="fa-solid fa-circle-notch fa-spin"></i> 계산 중입니다...</div>
-            </div>
+            
+            <button id="refresh-btn" class="bg-surface-container-low hover:bg-surface-container-highest text-slate-700 px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2 text-sm shadow-sm active:scale-95">
+                새로고침 <span class="material-symbols-outlined text-[16px]">refresh</span>
+            </button>
         </div>
     </div>
 
-    <script>
-        const GROUP_LABELS = {
-            B: 'BCM — Breast Cancer Material',
-            C: 'CMA — Chemical Material',
-            E: 'EMA — Extra Material'
-        };
+    <!-- Data Grid -->
+    <div id="prod-grid" class="flex flex-col gap-6">
+        <div id="prod-loading" class="flex flex-col items-center justify-center py-16 gap-3">
+            <span class="material-symbols-outlined text-primary text-4xl animate-spin">progress_activity</span>
+            <span class="text-slate-500 font-medium tracking-widest uppercase text-sm">연산 중입니다...</span>
+        </div>
+    </div>
+</section>
+{% endblock %}
 
-        async function loadProducible() {
-            const grid = document.getElementById('prod-grid');
-            const loading = document.getElementById('prod-loading');
+{% block extra_scripts %}
+<script>
+    const GROUP_LABELS = {
+        B: 'BCM — Breast Cancer Material',
+        C: 'CMA — Chemical Material',
+        E: 'EMA — Extra Material'
+    };
 
-            [...grid.children].forEach(el => { if (el !== loading) el.remove(); });
-            loading.style.display = 'block';
-            loading.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 계산 중입니다...';
+    async function loadProducible() {
+        const grid = document.getElementById('prod-grid');
+        const loading = document.getElementById('prod-loading');
 
-            try {
-                const res = await fetch('/api/producible');
-                const result = await res.json();
-                loading.style.display = 'none';
+        [...grid.children].forEach(el => { if (el !== loading) el.remove(); });
+        loading.style.display = 'flex';
 
-                if (result.status === 'success') {
-                    // 그룹화
-                    const groups = {};
-                    result.data.forEach(row => {
-                        const key = (row.item_code ?? '').charAt(0).toUpperCase();
-                        if (!groups[key]) groups[key] = [];
-                        groups[key].push(row);
+        try {
+            const res = await fetch('/api/producible');
+            const result = await res.json();
+            loading.style.display = 'none';
+
+            if (result.status === 'success') {
+                // 그룹화
+                const groups = {};
+                result.data.forEach(row => {
+                    const key = (row.item_code ?? '').charAt(0).toUpperCase();
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(row);
+                });
+
+                Object.keys(groups).sort().forEach(key => {
+                    // 그룹 헤더
+                    const header = document.createElement('div');
+                    header.className = 'flex items-center gap-3 pb-2 border-b border-surface-variant mt-6';
+                    header.innerHTML = `<span class="bg-primary-fixed text-primary px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">${key}</span><span class="text-sm font-bold text-slate-500">${GROUP_LABELS[key] ?? key + ' 그룹'}</span>`;
+                    if (Object.keys(groups).sort().indexOf(key) === 0) header.classList.remove('mt-6');
+                    grid.appendChild(header);
+
+                    const cardContainer = document.createElement('div');
+                    cardContainer.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mt-2';
+
+                    // 카드 생성
+                    groups[key].forEach(row => {
+                        const kit = row.max_kit ?? 0;
+                        
+                        let borderClass = 'border-l-4 border-error hover:border-error';
+                        let textClass = 'text-error';
+                        
+                        if (kit >= 256) {
+                            borderClass = 'border-l-4 border-green-500 hover:border-green-600';
+                            textClass = 'text-green-600';
+                        } else if (kit >= 1) {
+                            borderClass = 'border-l-4 border-amber-500 hover:border-amber-600';
+                            textClass = 'text-amber-500';
+                        }
+
+                        const card = document.createElement('div');
+                        card.className = `bg-white border-y border-r border-surface-container-highest rounded-xl p-4 flex flex-col gap-1.5 hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-default ${borderClass}`;
+                        card.innerHTML = `
+                            <span class="bg-surface-container-low text-primary w-fit px-2 py-0.5 rounded text-[10px] font-mono font-bold">${row.item_code ?? '-'}</span>
+                            <span class="text-sm font-bold text-on-surface truncate mt-1" title="${row.product_name ?? ''}">${row.product_name ?? '-'}</span>
+                            <span class="text-[10px] text-slate-400 font-medium">재고 <span class="text-slate-600 font-bold">${(row.current_stock ?? 0).toLocaleString()}</span> ${row.unit ?? ''}</span>
+                            <span class="text-2xl font-black ${textClass} mt-0.5">${kit.toLocaleString()} <span class="text-[10px] text-slate-400 font-medium ml-0.5">kit</span></span>
+                        `;
+                        cardContainer.appendChild(card);
                     });
-
-                    Object.keys(groups).sort().forEach(key => {
-                        // 그룹 헤더
-                        const header = document.createElement('div');
-                        header.className = 'group-header';
-                        header.innerHTML = `<span class="group-badge">${key}</span><span class="group-label">${GROUP_LABELS[key] ?? key + ' 그룹'}</span>`;
-                        grid.appendChild(header);
-
-                        // 카드
-                        groups[key].forEach(row => {
-                            const kit = row.max_kit ?? 0;
-                            const statusClass = kit >= 256 ? 'ok' : (kit >= 1 ? 'warn' : 'none');
-                            const kitClass = kit >= 256 ? 'kit-ok' : (kit >= 1 ? 'kit-warn' : 'kit-none');
-
-                            const card = document.createElement('div');
-                            card.className = `prod-card ${statusClass}`;
-                            card.innerHTML = `
-                                <span class="card-code">${row.item_code ?? '-'}</span>
-                                <span class="card-name" title="${row.product_name ?? ''}">${row.product_name ?? '-'}</span>
-                                <span class="card-stock-row">재고 <span class="card-stock-val">${(row.current_stock ?? 0).toLocaleString()}</span> ${row.unit ?? ''}</span>
-                                <span class="card-kit ${kitClass}">${kit.toLocaleString()}<span class="kit-unit">kit</span></span>
-                            `;
-                            grid.appendChild(card);
-                        });
-                    });
-                } else {
-                    loading.style.display = 'block';
-                    loading.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${result.message}`;
-                }
-            } catch (e) {
-                loading.style.display = 'block';
-                loading.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 데이터를 불러올 수 없습니다.';
+                    
+                    grid.appendChild(cardContainer);
+                });
+            } else {
+                loading.style.display = 'flex';
+                loading.innerHTML = `<span class="material-symbols-outlined text-error text-4xl">error</span><span class="text-error font-bold mt-2">${result.message}</span>`;
             }
+        } catch (e) {
+            loading.style.display = 'flex';
+            loading.innerHTML = '<span class="material-symbols-outlined text-error text-4xl">error</span><span class="text-slate-500 font-bold mt-2">데이터를 불러올 수 없습니다.</span>';
         }
+    }
 
-        document.getElementById('refresh-btn').addEventListener('click', loadProducible);
-        loadProducible();
-    </script>
-</body>
-
-</html>
+    document.getElementById('refresh-btn').addEventListener('click', loadProducible);
+    loadProducible();
+</script>
+{% endblock %}

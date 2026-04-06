@@ -1,546 +1,279 @@
-<!DOCTYPE html>
-<html lang="ko">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MES 통합 관리 시스템 - 홈</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body {
-            margin: 0;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            min-height: 100vh;
-        }
+{% set active_nav = 'index' %}
 
+{% block title %}MES 통합 관리 시스템 - 홈 | Kinetic MES{% endblock %}
 
-        /* ─── Main Content ─── */
-        .main-content {
-            padding: 2rem 2.5rem;
-            padding-top: calc(52px + 2rem);
-            min-height: 100vh;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-        }
+{% block content %}
+<!-- Page Header -->
+<div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div>
+        <h1 class="text-3xl font-bold text-on-surface tracking-tight flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary text-4xl">dashboard</span>
+            원료 및 완제품 재고 현황
+        </h1>
+        <p class="text-slate-500 font-medium text-sm mt-2">전체 창고의 실시간 재고 현황을 모니터링합니다. 상세 조회는 상단 메뉴를 활용하세요.</p>
+    </div>
+</div>
 
-        .page-title {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 0.4rem;
-        }
-
-        .page-subtitle {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-            margin-bottom: 2rem;
-        }
-
-        /* ─── Stock Summary Grid ─── */
-        .stock-panel {
-            border-radius: var(--radius-lg);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .panel-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1.2rem;
-        }
-
-        .panel-header h2 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-        }
-
-        .panel-header h2 i {
-            color: var(--primary);
-        }
-
-        .refresh-btn {
-            background: rgba(255, 255, 255, 0.07);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--text-muted);
-            padding: 0.4rem 0.9rem;
-            border-radius: var(--radius-md);
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-
-        .refresh-btn:hover {
-            background: rgba(59, 130, 246, 0.15);
-            color: white;
-        }
-
-        /* ─── Modal ─── */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-            display: none; justify-content: center; align-items: center;
-            z-index: 1000;
-            opacity: 0; transition: opacity 0.2s;
-        }
-        .modal-overlay.show { display: flex; opacity: 1; }
-        .modal-content {
-            background: #1e293b;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: var(--radius-lg);
-            width: 90%; max-width: 800px; max-height: 85vh;
-            display: flex; flex-direction: column;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-            transform: translateY(20px); transition: transform 0.2s;
-        }
-        .modal-overlay.show .modal-content { transform: translateY(0); }
-        .modal-header {
-            padding: 1.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex; justify-content: space-between; align-items: center;
-            background: rgba(15, 23, 42, 0.4); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-        }
-        .modal-header h3 { margin: 0; font-size: 1.2rem; color: #fff; display: flex; align-items: center; gap: 0.6rem; }
-        .modal-header h3 i { color: var(--primary); }
-        .modal-close {
-            background: transparent; border: none; color: var(--text-muted);
-            font-size: 1.25rem; cursor: pointer; transition: color 0.2s;
-        }
-        .modal-close:hover { color: #fff; }
-        .modal-body {
-            padding: 1.5rem; overflow-y: auto; flex: 1;
-        }
-        .modal-table { width: 100%; border-collapse: collapse; }
-        .modal-table th, .modal-table td {
-            padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            font-size: 0.85rem;
-            color: #fff;
-        }
-        .modal-table th { color: var(--text-muted); font-weight: 600; background: rgba(255, 255, 255, 0.02); position: sticky; top: 0; }
-        .type-in { color: #10b981; font-weight: 600; }
-        .type-out { color: #f43f5e; font-weight: 600; }
-        
-        .clickable-row { cursor: pointer; transition: background 0.15s; }
-        .clickable-row:hover td { background: rgba(59, 130, 246, 0.1); }
-
-        /* 카드 그리드: 6열 고정 */
-        .stock-grid {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 0.75rem;
-            overflow: visible;
-        }
-
-        /* 그룹 헤더 */
-        .group-header {
-            grid-column: 1 / -1;
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            padding: 0.4rem 0 0.2rem;
-            margin-top: 0.5rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .group-header:first-child {
-            margin-top: 0;
-        }
-
-        .group-badge {
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            background: rgba(59, 130, 246, 0.18);
-            color: #60a5fa;
-            padding: 0.18rem 0.55rem;
-            border-radius: 4px;
-        }
-
-        .group-label {
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: var(--text-muted);
-        }
-
-        .stock-card {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: var(--radius-md);
-            padding: 0.9rem 1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.4rem;
-            transition: background 0.2s, border-color 0.2s, transform 0.15s;
-        }
-
-        .stock-card:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(59, 130, 246, 0.35);
-            transform: translateY(-2px);
-        }
-
-        .card-code {
-            font-family: monospace;
-            font-size: 0.78rem;
-            background: rgba(59, 130, 246, 0.12);
-            color: #60a5fa;
-            padding: 0.15rem 0.45rem;
-            border-radius: 4px;
-            align-self: flex-start;
-        }
-
-        .card-name {
-            font-size: 0.88rem;
-            color: var(--text-main);
-            font-weight: 500;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .card-stock {
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-top: 0.2rem;
-        }
-
-        .card-unit {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            font-weight: 400;
-            margin-left: 0.25rem;
-        }
-
-        .stock-pos {
-            color: #10b981;
-        }
-
-        .stock-zero {
-            color: var(--text-muted);
-        }
-
-        .stock-neg {
-            color: #ef4444;
-        }
-
-        #stock-loading {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-muted);
-            grid-column: 1 / -1;
-        }
-    </style>
-</head>
-
-<body>
-    <header class="top-header">
-        <a href="/" class="header-brand">
-            <img src="/static/img/logo.png" alt="Logo" class="brand-logo">
-            <span>생산관리팀 통합 관리</span>
+<!-- Stock Summary Panel (Raw Material) -->
+<section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white mb-8">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">bar_chart</span> 원료별 재고 현황
+        </h2>
+        <a href="/raw-material" class="bg-surface-container-low hover:bg-surface-container-highest text-slate-700 px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2 text-sm shadow-sm active:scale-95">
+            상세보기 <span class="material-symbols-outlined text-[16px]">open_in_new</span>
         </a>
-        <nav class="header-nav">
-            <a href="/" class="nav-btn active">
-                <i class="fa-solid fa-house"></i>
-                재고현황
-            </a>
-            <a href="/material-info" class="nav-btn">
-                <i class="fa-solid fa-list-ul"></i>
-                안전재고
-            </a>
-            <a href="/purchase-dashboard" class="nav-btn">
-                <i class="fa-solid fa-chart-line"></i>
-                구매 대시보드
-            </a>
-            <a href="/facilities" class="nav-btn">
-                <i class="fa-solid fa-tools"></i>
-                설비 관리
-            </a>
-            <a href="/inventory" class="nav-btn">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                원료상세검색
-            </a>
-            <a href="/raw-material" class="nav-btn">
-                <i class="fa-solid fa-flask"></i>
-                원재료관리
-            </a>
-            <a href="/producible" class="nav-btn">
-                <i class="fa-solid fa-flask-vial"></i>
-                생산가능수량
-            </a>
-                        <div class="nav-dropdown">
-                <a href="/production" class="nav-btn">
-                    <i class="fa-solid fa-industry"></i>
-                    생산 관리 <i class="fa-solid fa-chevron-down" style="font-size: 0.7rem; margin-left: 5px;"></i>
-                </a>
-                <div class="dropdown-content">
-                    <a href="/production"><i class="fa-solid fa-calculator"></i>생산 지시</a>
-                    <a href="/mo-management"><i class="fa-solid fa-file-contract"></i>MO 생성</a>
-                    <a href="/bom-calculator"><i class="fa-solid fa-sitemap"></i>BOM 계산기</a>
-                </div>
-            </div>
-            <a href="/finished-product" class="nav-btn">
-                <i class="fa-solid fa-box"></i>
-                완제품관리
-            </a>
-            <a href="/validation" class="nav-btn">
-                <i class="fa-solid fa-clipboard-check"></i>
-                밸리데이션
-            </a>
-            <a href="/calibration" class="nav-btn">
-                <i class="fa-solid fa-compass-drafting"></i>
-                검교정
-            </a>
-            <a href="/upload-usage" class="nav-btn">
-                <i class="fa-solid fa-file-arrow-up"></i>
-                사용량 업로드
-            </a>
-            <a href="/upload-receiving" class="nav-btn">
-                <i class="fa-solid fa-file-import"></i>
-                입고 업로드
-            </a>
-        </nav>
-    </header>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        <h1 class="page-title"><i class="fa-solid fa-chart-bar" style="color:var(--primary); margin-right: 0.5rem;"></i>
-            원료 재고 현황</h1>
-        <p class="page-subtitle">원료별 전체 재고 현황을 확인하세요. 상세 조회 및 생산 관리는 상단 메뉴를 이용하세요.</p>
-
-        <!-- Stock Summary Panel -->
-        <div class="stock-panel glass-panel">
-            <div class="panel-header">
-                <h2><i class="fa-solid fa-chart-bar"></i> 원료별 재고 현황</h2>
-                <a href="/raw-material" class="refresh-btn" style="text-decoration:none;">
-                    <i class="fa-solid fa-arrow-up-right-from-square"></i> 상세보기
-                </a>
-            </div>
-            <div class="stock-grid" id="stock-grid">
-                <div id="stock-loading"><i class="fa-solid fa-circle-notch fa-spin"></i> 데이터를 불러오는 중입니다...</div>
-            </div>
-        </div>
-        <!-- Finished Product Summary Panel -->
-        <div class="stock-panel glass-panel" style="margin-top: 1.5rem;">
-            <div class="panel-header">
-                <h2><i class="fa-solid fa-box-open"></i> 완제품 Lot별 재고 현황</h2>
-                <a href="/finished-product" class="refresh-btn" style="text-decoration:none;">
-                    <i class="fa-solid fa-arrow-up-right-from-square"></i> 상세 보기
-                </a>
-            </div>
-            <div id="fp-grid" style="overflow-x:auto; border-radius:8px; border:1px solid rgba(255,255,255,0.08); background:rgba(15,23,42,0.4);">
-                <table style="width:100%; border-collapse:collapse; min-width:700px;">
-                    <thead>
-                        <tr>
-                            <th style="padding:0.75rem 1rem; text-align:left; font-size:0.8rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05);">제품코드</th>
-                            <th style="padding:0.75rem 1rem; text-align:left; font-size:0.8rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05);">제품명</th>
-                            <th style="padding:0.75rem 1rem; text-align:left; font-size:0.8rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05);">Lot No.</th>
-                            <th style="padding:0.75rem 1rem; text-align:left; font-size:0.8rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05);">제조일자</th>
-                            <th style="padding:0.75rem 1rem; text-align:left; font-size:0.8rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05);">유효기간</th>
-                            <th style="padding:0.75rem 1rem; text-align:right; font-size:0.8rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05);">입고</th>
-                            <th style="padding:0.75rem 1rem; text-align:right; font-size:0.8rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05);">출고</th>
-                            <th style="padding:0.75rem 1rem; text-align:right; font-size:0.8rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; background:rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.05);">현재 재고</th>
-                        </tr>
-                    </thead>
-                    <tbody id="fp-tbody">
-                        <tr><td colspan="8" style="text-align:center; padding:2rem; color:#94a3b8;"><i class="fa-solid fa-circle-notch fa-spin"></i> 불러오는 중...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
     </div>
 
-    <script>
-        async function loadStockSummary() {
-            const grid = document.getElementById('stock-grid');
-            const loading = document.getElementById('stock-loading');
+    <div id="stock-grid" class="flex flex-col gap-6">
+        <div id="stock-loading" class="flex flex-col items-center justify-center py-16 gap-3">
+            <span class="material-symbols-outlined text-primary text-4xl animate-spin">progress_activity</span>
+            <span class="text-slate-500 font-medium tracking-widest uppercase text-sm">데이터를 불러오는 중입니다...</span>
+        </div>
+    </div>
+</section>
 
-            // 기존 카드 제거 (로딩 표시만 남김)
-            [...grid.children].forEach(el => { if (el !== loading) el.remove(); });
-            loading.style.display = 'block';
-            loading.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 데이터를 불러오는 중입니다...';
+<!-- Finished Product Summary Panel -->
+<section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white mb-8">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">inventory_2</span> 완제품 Lot별 재고 현황
+        </h2>
+        <a href="/finished-product" class="bg-surface-container-low hover:bg-surface-container-highest text-slate-700 px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2 text-sm shadow-sm active:scale-95">
+            상세 보기 <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+        </a>
+    </div>
 
-            try {
-                const res = await fetch('/api/stock/summary');
-                const result = await res.json();
+    <div class="overflow-x-auto border border-surface-variant rounded-xl hide-scrollbar">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-surface-container-low text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-surface-variant">
+                    <th class="py-3 px-6 whitespace-nowrap">제품코드</th>
+                    <th class="py-3 px-6">제품명</th>
+                    <th class="py-3 px-6">Lot No.</th>
+                    <th class="py-3 px-6">제조일자</th>
+                    <th class="py-3 px-6">유효기간</th>
+                    <th class="py-3 px-6 text-right">입고</th>
+                    <th class="py-3 px-6 text-right">출고</th>
+                    <th class="py-3 px-6 text-right">현재 재고</th>
+                </tr>
+            </thead>
+            <tbody id="fp-tbody" class="text-sm divide-y divide-surface-container-low bg-white">
+                <tr><td colspan="8" class="text-center py-12 text-slate-400 font-medium"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 불러오는 중...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
 
-                loading.style.display = 'none';
+<!-- Modal HTML -->
+<div id="lot-modal" class="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center opacity-0 transition-opacity duration-200" onclick="if(event.target===this) closeLotModal()">
+    <div class="bg-white rounded-2xl w-11/12 max-w-4xl max-h-[85vh] flex flex-col cloud-shadow transform translate-y-4 transition-transform duration-200" id="lot-modal-content">
+        <div class="px-6 py-5 border-b border-surface-variant flex justify-between items-center bg-surface-container-low rounded-t-2xl">
+            <h3 class="font-bold text-lg text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">history</span> 
+                <span id="modal-lot-title">Lot 상세 내역</span>
+            </h3>
+            <button class="text-slate-400 hover:text-slate-700 transition-colors" onclick="closeLotModal()">
+                <span class="material-symbols-outlined text-2xl">close</span>
+            </button>
+        </div>
+        <div class="p-6 overflow-y-auto hide-scrollbar flex-1 bg-white rounded-b-2xl">
+            <table class="w-full text-left border-collapse">
+                <thead class="sticky top-0 bg-white">
+                    <tr class="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-surface-variant">
+                        <th class="pb-3 pr-4">구분</th>
+                        <th class="pb-3 pr-4">발생일자</th>
+                        <th class="pb-3 pr-4 text-right">수량(Kit)</th>
+                        <th class="pb-3 pr-4">출고처</th>
+                        <th class="pb-3 pr-4">QC 정보</th>
+                        <th class="pb-3">비고</th>
+                    </tr>
+                </thead>
+                <tbody id="modal-tbody" class="text-sm divide-y divide-surface-container-low">
+                    <!-- 동적 삽입 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
 
-                if (result.status === 'success') {
-                    // 첫 글자 기준으로 그룹화
-                    const GROUP_LABELS = { B: 'BCM — Breast Cancer Material', C: 'CMA — Chemical Material', E: 'EMA — Extra Material' };
-                    const groups = {};
-                    result.data.forEach(row => {
-                        const key = (row.item_code ?? '').charAt(0).toUpperCase();
-                        if (!groups[key]) groups[key] = [];
-                        groups[key].push(row);
+{% block extra_scripts %}
+<script>
+    async function loadStockSummary() {
+        const grid = document.getElementById('stock-grid');
+        const loading = document.getElementById('stock-loading');
+
+        // 기존 카드 제거 (로딩 표시만 남김)
+        [...grid.children].forEach(el => { if (el !== loading) el.remove(); });
+        loading.style.display = 'flex';
+
+        try {
+            const res = await fetch('/api/stock/summary');
+            const result = await res.json();
+
+            loading.style.display = 'none';
+
+            if (result.status === 'success') {
+                // 첫 글자 기준으로 그룹화
+                const GROUP_LABELS = { B: 'BCM — Breast Cancer Material', C: 'CMA — Chemical Material', E: 'EMA — Extra Material' };
+                const groups = {};
+                result.data.forEach(row => {
+                    const key = (row.item_code ?? '').charAt(0).toUpperCase();
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(row);
+                });
+
+                // 그룹 순서 정렬 후 렌더링
+                Object.keys(groups).sort().forEach(key => {
+                    // 그룹 헤더
+                    const header = document.createElement('div');
+                    header.className = 'flex items-center gap-3 pb-2 border-b border-surface-variant mt-6';
+                    header.innerHTML = `<span class="bg-primary-fixed text-primary px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">${key}</span><span class="text-sm font-bold text-slate-500">${GROUP_LABELS[key] ?? key + ' 그룹'}</span>`;
+                    if (Object.keys(groups).sort().indexOf(key) === 0) header.classList.remove('mt-6');
+                    grid.appendChild(header);
+
+                    const cardContainer = document.createElement('div');
+                    cardContainer.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4';
+
+                    // 카드
+                    groups[key].forEach(row => {
+                        const stock = row.total_stock ?? 0;
+                        let stockColor = 'text-slate-400';
+                        if (stock > 0) stockColor = 'text-green-600';
+                        else if (stock < 0) stockColor = 'text-error';
+
+                        const card = document.createElement('div');
+                        card.className = 'bg-white border border-surface-container-highest rounded-xl p-4 flex flex-col gap-1.5 hover:shadow-md hover:border-primary-fixed hover:-translate-y-1 transition-all duration-200 cursor-default';
+                        card.innerHTML = `
+                            <span class="bg-surface-container-low text-primary w-fit px-2 py-0.5 rounded text-[10px] font-mono font-bold">${row.item_code ?? '-'}</span>
+                            <span class="text-sm font-bold text-on-surface truncate mt-1" title="${row.product_name ?? ''}">${row.product_name ?? '-'}</span>
+                            <span class="text-xl font-black ${stockColor} mt-1">${stock.toLocaleString()} <span class="text-[10px] text-slate-400 font-medium ml-0.5">${row.unit ?? ''}</span></span>
+                        `;
+                        cardContainer.appendChild(card);
                     });
-
-                    // 그룹 순서 정렬 후 렌더링
-                    Object.keys(groups).sort().forEach(key => {
-                        // 그룹 헤더
-                        const header = document.createElement('div');
-                        header.className = 'group-header';
-                        header.innerHTML = `<span class="group-badge">${key}</span><span class="group-label">${GROUP_LABELS[key] ?? key + ' 그룹'}</span>`;
-                        grid.appendChild(header);
-
-                        // 카드
-                        groups[key].forEach(row => {
-                            const stock = row.total_stock ?? 0;
-                            const stockClass = stock > 0 ? 'stock-pos' : (stock < 0 ? 'stock-neg' : 'stock-zero');
-                            const card = document.createElement('div');
-                            card.className = 'stock-card';
-                            card.innerHTML = `
-                                <span class="card-code">${row.item_code ?? '-'}</span>
-                                <span class="card-name" title="${row.product_name ?? ''}">${row.product_name ?? '-'}</span>
-                                <span class="card-stock ${stockClass}">${stock.toLocaleString()}<span class="card-unit">${row.unit ?? ''}</span></span>
-                            `;
-                            grid.appendChild(card);
-                        });
-                    });
-                }
-            } catch (e) {
-                loading.style.display = 'block';
-                loading.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 데이터를 불러올 수 없습니다.';
-            }
-        }
-
-        loadStockSummary();
-
-        async function loadFinishedProductSummary() {
-            const tbody = document.getElementById('fp-tbody');
-            try {
-                const res = await fetch('/api/finished-product/inventory');
-                const result = await res.json();
-                tbody.innerHTML = '';
-                
-                if (result.status === 'success' && result.data.length > 0) {
-                    // 재고가 1개 이상인 항목만 필터링
-                    const activeItems = result.data.filter(item => item.current_stock > 0);
                     
-                    if (activeItems.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; color:#94a3b8;">현재 재고가 있는 Lot이 없습니다.</td></tr>';
-                        return;
-                    }
-
-                    activeItems.forEach(item => {
-                        const stockClass = '#10b981'; // 필터링했으므로 무조건 양수색상
-                        const tr = document.createElement('tr');
-                        tr.className = 'clickable-row';
-                        tr.onclick = () => openLotModal(item.lot_no);
-                        tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
-                        tr.innerHTML = `
-                            <td style="padding:0.75rem 1rem; font-family:monospace; color:#60a5fa; font-weight:600;">${item.product_code || '-'}</td>
-                            <td style="padding:0.75rem 1rem; font-weight:500;">${item.product_name || '-'}</td>
-                            <td style="padding:0.75rem 1rem;"><span style="font-family:monospace; background:rgba(255,255,255,0.08); padding:0.15rem 0.45rem; border-radius:4px; font-size:0.83rem;">${item.lot_no || '-'}</span></td>
-                            <td style="padding:0.75rem 1rem; color:#cbd5e1; font-size:0.88rem;">${item.manufacture_date || '-'}</td>
-                            <td style="padding:0.75rem 1rem; color:#f87171; font-size:0.88rem; font-weight:500;">${item.expire_date || '-'}</td>
-                            <td style="padding:0.75rem 1rem; text-align:right; font-weight:600;">${(item.total_in || 0).toLocaleString()} <span style="font-size:0.75rem;color:#94a3b8;">Kit</span></td>
-                            <td style="padding:0.75rem 1rem; text-align:right; font-weight:600; color:#f43f5e;">${(item.total_out || 0).toLocaleString()} <span style="font-size:0.75rem;color:#94a3b8;">Kit</span></td>
-                            <td style="padding:0.75rem 1rem; text-align:right; font-weight:700; color:${stockClass};">${(item.current_stock || 0).toLocaleString()} <span style="font-size:0.75rem;color:#94a3b8;">Kit</span></td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; color:#94a3b8;">데이터가 없습니다.</td></tr>';
-                }
-            } catch(e) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> 데이터를 불러올 수 없습니다.</td></tr>';
+                    grid.appendChild(cardContainer);
+                });
             }
+        } catch (e) {
+            loading.style.display = 'flex';
+            loading.innerHTML = '<span class="material-symbols-outlined text-error text-4xl">error</span><span class="text-slate-500 font-medium">데이터를 불러올 수 없습니다.</span>';
         }
-        loadFinishedProductSummary();
+    }
 
-        // 모달 로직
-        function getModal() { return document.getElementById('lot-modal'); }
-        
-        function closeLotModal() {
-            const modal = getModal();
-            if(!modal) return;
-            modal.classList.remove('show');
-            setTimeout(() => { modal.style.display = 'none'; }, 200);
-        }
+    loadStockSummary();
 
-        async function openLotModal(lotNo) {
-            const modal = getModal();
-            if(!modal) return;
-            document.getElementById('modal-lot-title').innerText = `[${lotNo}] 입출고 상세 내역`;
-            const tbody = document.getElementById('modal-tbody');
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem; color: #94a3b8;"><i class="fa-solid fa-circle-notch fa-spin"></i> 로딩 중...</td></tr>';
+    async function loadFinishedProductSummary() {
+        const tbody = document.getElementById('fp-tbody');
+        try {
+            const res = await fetch('/api/finished-product/inventory');
+            const result = await res.json();
+            tbody.innerHTML = '';
             
-            modal.style.display = 'flex';
-            requestAnimationFrame(() => modal.classList.add('show'));
-
-            try {
-                const res = await fetch('/api/finished-product/lot/' + encodeURIComponent(lotNo));
-                const result = await res.json();
-
-                if (result.status === 'success') {
-                    tbody.innerHTML = '';
-                    if (result.data.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem; color: #94a3b8;">상세 내역이 없습니다.</td></tr>';
-                        return;
-                    }
-
-                    result.data.forEach(item => {
-                        const tr = document.createElement('tr');
-                        const isOut = item.transaction_type.includes('출고');
-                        const typeClass = isOut ? 'type-out' : 'type-in';
-                        
-                        tr.innerHTML = `
-                            <td class="${typeClass}">${item.transaction_type}</td>
-                            <td style="color:#cbd5e1;">${item.transaction_date || '-'}</td>
-                            <td style="text-align:right; font-weight:600;">${(item.quantity_kit || 0).toLocaleString()} <span style="font-size:0.75rem;color:#94a3b8;font-weight:400;">Kit</span></td>
-                            <td>${item.destination || '-'}</td>
-                            <td>${item.qc_info || '-'}</td>
-                            <td style="color:#94a3b8;">${item.remark || '-'}</td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-                } else {
-                    throw new Error(result.message);
+            if (result.status === 'success' && result.data.length > 0) {
+                // 재고가 1개 이상인 항목만 필터링
+                const activeItems = result.data.filter(item => item.current_stock > 0);
+                
+                if (activeItems.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-12 text-slate-400 font-medium">현재 재고가 있는 Lot이 없습니다.</td></tr>';
+                    return;
                 }
-            } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 2rem; color: #ef4444;">에러 발생: ${err.message}</td></tr>`;
+
+                activeItems.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-surface-container-low/50 transition-colors cursor-pointer group';
+                    tr.onclick = () => openLotModal(item.lot_no);
+                    tr.innerHTML = `
+                        <td class="py-4 px-6 font-mono text-xs font-bold text-primary whitespace-nowrap">${item.product_code || '-'}</td>
+                        <td class="py-4 px-6 font-bold text-slate-700 whitespace-nowrap">${item.product_name || '-'}</td>
+                        <td class="py-4 px-6 whitespace-nowrap"><span class="bg-surface-container-high px-2 py-1 rounded text-[10px] font-bold text-slate-600 tracking-wider">${item.lot_no || '-'}</span></td>
+                        <td class="py-4 px-6 text-xs text-slate-500 font-medium whitespace-nowrap">${item.manufacture_date || '-'}</td>
+                        <td class="py-4 px-6 text-xs text-error font-bold whitespace-nowrap">${item.expire_date || '-'}</td>
+                        <td class="py-4 px-6 text-right whitespace-nowrap"><span class="font-bold text-slate-700">${(item.total_in || 0).toLocaleString()}</span> <span class="text-[10px] text-slate-400">Kit</span></td>
+                        <td class="py-4 px-6 text-right whitespace-nowrap"><span class="font-bold text-error">${(item.total_out || 0).toLocaleString()}</span> <span class="text-[10px] text-slate-400">Kit</span></td>
+                        <td class="py-4 px-6 text-right whitespace-nowrap"><span class="font-bold text-lg text-green-600">${(item.current_stock || 0).toLocaleString()}</span> <span class="text-[10px] text-slate-400">Kit</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-12 text-slate-400 font-medium">데이터가 없습니다.</td></tr>';
             }
+        } catch(e) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-12 text-error font-medium"><span class="material-symbols-outlined align-middle mr-2">error</span> 데이터를 불러올 수 없습니다.</td></tr>';
         }
-    </script>
+    }
+    loadFinishedProductSummary();
 
-    <!-- Modal HTML -->
-    <div id="lot-modal" class="modal-overlay" onclick="if(event.target===this) closeLotModal()">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fa-solid fa-clock-rotate-left"></i> <span id="modal-lot-title">Lot 상세 내역</span></h3>
-                <button class="modal-close" onclick="closeLotModal()"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="modal-body">
-                <table class="modal-table">
-                    <thead>
-                        <tr>
-                            <th>구분</th>
-                            <th>발생일자</th>
-                            <th style="text-align:right;">수량(Kit)</th>
-                            <th>출고처</th>
-                            <th>QC 정보</th>
-                            <th>비고</th>
-                        </tr>
-                    </thead>
-                    <tbody id="modal-tbody">
-                        <!-- 동적 삽입 -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</body>
+    // 모달 로직
+    function getModal() { return document.getElementById('lot-modal'); }
+    
+    function closeLotModal() {
+        const modal = getModal();
+        const content = document.getElementById('lot-modal-content');
+        if(!modal) return;
+        
+        modal.classList.remove('opacity-100');
+        content.classList.remove('translate-y-0');
+        
+        setTimeout(() => { modal.style.display = 'none'; }, 200);
+    }
 
-</html>
+    async function openLotModal(lotNo) {
+        const modal = getModal();
+        const content = document.getElementById('lot-modal-content');
+        if(!modal) return;
+        
+        document.getElementById('modal-lot-title').innerText = `[${lotNo}] 입출고 상세 내역`;
+        const tbody = document.getElementById('modal-tbody');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-slate-400"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 로딩 중...</td></tr>';
+        
+        modal.style.display = 'flex';
+        // Add minimal delay to ensure block is applied before opacity transition
+        requestAnimationFrame(() => {
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.add('opacity-100');
+                content.classList.add('translate-y-0');
+            });
+        });
+
+        try {
+            const res = await fetch('/api/finished-product/lot/' + encodeURIComponent(lotNo));
+            const result = await res.json();
+
+            if (result.status === 'success') {
+                tbody.innerHTML = '';
+                if (result.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-slate-400 font-medium">상세 내역이 없습니다.</td></tr>';
+                    return;
+                }
+
+                result.data.forEach((item, idx) => {
+                    const tr = document.createElement('tr');
+                    const isOut = item.transaction_type.includes('출고');
+                    const badgeClass = isOut ? 'bg-error-container text-on-error-container' : 'bg-green-100 text-green-800';
+                    const icon = isOut ? 'arrow_outward' : 'south_west';
+                    
+                    tr.className = "hover:bg-slate-50 transition-colors bg-white";
+                    tr.innerHTML = `
+                        <td class="py-4 pr-4 whitespace-nowrap"><span class="px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 w-fit uppercase ${badgeClass}"><span class="material-symbols-outlined text-[14px]">${icon}</span> ${item.transaction_type}</span></td>
+                        <td class="py-4 pr-4 whitespace-nowrap text-xs font-medium text-slate-500">${item.transaction_date || '-'}</td>
+                        <td class="py-4 pr-4 whitespace-nowrap text-right"><span class="font-bold text-on-surface">${(item.quantity_kit || 0).toLocaleString()}</span> <span class="text-[10px] text-slate-400">Kit</span></td>
+                        <td class="py-4 pr-4 font-medium text-slate-700">${item.destination || '-'}</td>
+                        <td class="py-4 pr-4 text-xs text-slate-500">${item.qc_info || '-'}</td>
+                        <td class="py-4 text-xs text-slate-400">${item.remark || '-'}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (err) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-error font-medium">에러 발생: ${err.message}</td></tr>`;
+        }
+    }
+</script>
+{% endblock %}

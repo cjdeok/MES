@@ -1,209 +1,219 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>생산 관리 - BOM 전개 계산기</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .form-control {
-            width: 100%;
-            padding: 0.8rem 1rem;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-color);
-            background: rgba(0, 0, 0, 0.2);
-            color: var(--text-main);
-            font-size: 1rem;
-            font-family: inherit;
-        }
-        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
-        .action-btn { background: var(--primary); color: white; border: none; padding: 0 2rem; border-radius: var(--radius-md); font-weight: 500; font-size: 1rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; height: 48px; }
-        .action-btn:hover { background: #2563eb; transform: translateY(-1px); }
-        .input-group-container { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem; }
-        .input-group-container label { font-size: 0.9rem; color: var(--text-muted); font-weight: 500; }
-        .level-section { margin-bottom: 24px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius-lg); overflow: hidden; }
-        .level-header { background-color: rgba(255, 255, 255, 0.05); padding: 12px 16px; font-weight: 600; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; color: #fff; }
-        .highlight { color: #10b981; font-weight: 700; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px 16px; text-align: left; font-size: 0.9rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-        th { background-color: rgba(255, 255, 255, 0.02); color: var(--text-muted); font-weight: 600; }
-        .result-area { display: none; }
-    </style>
-</head>
-<body>
-    <div class="app-container">
-        <header class="top-header">
-        <a href="/" class="header-brand">
-            <img src="/static/img/logo.png" alt="Logo" class="brand-logo">
-            <span>생산관리팀 통합 관리</span>
-        </a>
-        <nav class="header-nav">
-            <a href="/" class="nav-btn">
-                <i class="fa-solid fa-house"></i>
-                재고현황
-            </a>
-            <a href="/material-info" class="nav-btn">
-                <i class="fa-solid fa-list-ul"></i>
-                안전재고
-            </a>
-            <a href="/purchase-dashboard" class="nav-btn">
-                <i class="fa-solid fa-chart-line"></i>
-                구매 대시보드
-            </a>
-            <a href="/facilities" class="nav-btn">
-                <i class="fa-solid fa-tools"></i>
-                설비 관리
-            </a>
-            <a href="/inventory" class="nav-btn">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                원료상세검색
-            </a>
-            <a href="/raw-material" class="nav-btn">
-                <i class="fa-solid fa-flask"></i>
-                원재료관리
-            </a>
-            <a href="/producible" class="nav-btn">
-                <i class="fa-solid fa-flask-vial"></i>
-                생산가능수량
-            </a>
-                        <div class="nav-dropdown">
-                <a href="/production" class="nav-btn">
-                    <i class="fa-solid fa-industry"></i>
-                    생산 관리 <i class="fa-solid fa-chevron-down" style="font-size: 0.7rem; margin-left: 5px;"></i>
-                </a>
-                <div class="dropdown-content">
-                    <a href="/production"><i class="fa-solid fa-calculator"></i>생산 지시</a>
-                    <a href="/mo-management"><i class="fa-solid fa-file-contract"></i>MO 생성</a>
-                    <a href="/bom-calculator" class="active"><i class="fa-solid fa-sitemap"></i>BOM 계산기</a>
-                </div>
-            </div>
-            <a href="/finished-product" class="nav-btn">
-                <i class="fa-solid fa-box"></i>
-                완제품관리
-            </a>
-            <a href="/validation" class="nav-btn">
-                <i class="fa-solid fa-clipboard-check"></i>
-                밸리데이션
-            </a>
-            <a href="/calibration" class="nav-btn">
-                <i class="fa-solid fa-compass-drafting"></i>
-                검교정
-            </a>
-            <a href="/upload-usage" class="nav-btn">
-                <i class="fa-solid fa-file-arrow-up"></i>
-                사용량 업로드
-            </a>
-            <a href="/upload-receiving" class="nav-btn">
-                <i class="fa-solid fa-file-import"></i>
-                입고 업로드
-            </a>
-        </nav>
-    </header>
-        <main>
-            <section class="control-panel glass-panel">
-                <h2><i class="fa-solid fa-sitemap"></i> BOM 전개 계산기 (Original)</h2>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                    <div class="input-group-container">
-                        <label>수식 마스터 파일 선택</label>
-                        <select id="formulaFileSelect" class="form-control"><option value="">파일 목록을 불러오는 중...</option></select>
-                    </div>
-                    <div class="input-group-container">
-                        <label>목표 생산량 (Level 0)</label>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <input type="number" id="targetQty" class="form-control" placeholder="수량을 입력하세요" min="1" value="256" />
-                            <button onclick="calculateBOM()" class="action-btn" style="white-space: nowrap;"><i class="fa-solid fa-wand-magic-sparkles"></i> 분석</button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <div id="spinner" class="hidden" style="text-align: center; padding: 40px; color: var(--text-muted); display: none;">
-                <div class="spinner"></div><p>BOM 전개 중...</p>
-            </div>
-            
-            <div id="emptyState" class="empty-state">
-                <i class="fa-solid fa-clipboard-check"></i><p>수식 파일과 목표 생산량을 설정하고 분석 버튼을 눌러주세요.</p>
-            </div>
-            
-            <section id="resultArea" class="results-section result-area">
-                <div class="history-panel glass-panel">
-                    <div id="summaryInfo" style="margin-bottom: 20px; font-weight: 500; color: var(--text-muted);"></div>
-                    <div class="level-section">
-                        <div class="level-header">Level 1 (포장/완제품) <span id="l1Count"></span></div>
-                        <div class="table-container">
-                            <table>
-                                <thead><tr><th style="width: 25%;">상위 Lot</th><th style="width: 30%;">생산LOT</th><th style="width: 25%;">명칭 / 구성품</th><th style="width: 10%;">소요량</th><th style="width: 10%;">단위</th></tr></thead>
-                                <tbody id="l1Table"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="level-section">
-                        <div class="level-header">Level 2 (반제품 제조) <span id="l2Count"></span></div>
-                        <div class="table-container">
-                            <table>
-                                <thead><tr><th style="width: 25%;">상위 Lot</th><th style="width: 30%;">생산LOT</th><th style="width: 25%;">명칭 / 구성품</th><th style="width: 10%;">소요량</th><th style="width: 10%;">단위</th></tr></thead>
-                                <tbody id="l2Table"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="level-section">
-                        <div class="level-header">Level 3 (하위 조제) <span id="l3Count"></span></div>
-                        <div class="table-container">
-                            <table>
-                                <thead><tr><th style="width: 25%;">상위 Lot</th><th style="width: 30%;">생산LOT</th><th style="width: 25%;">명칭 / 구성품</th><th style="width: 10%;">소요량</th><th style="width: 10%;">단위</th></tr></thead>
-                                <tbody id="l3Table"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </main>
+{% extends "base.html" %}
+
+{% set active_nav = 'bom_calculator' %}
+{% set active_nav_parent = 'production' %}
+
+{% block title %}생산 관리 - BOM 전개 계산기 | Kinetic MES{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div>
+        <h1 class="text-3xl font-bold text-on-surface tracking-tight flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary text-4xl">account_tree</span>
+            BOM 전개 계산기
+        </h1>
+        <p class="text-slate-500 font-medium text-sm mt-2">BOM 마스터를 기반으로 목표 생산량에 따른 필요 원부자재 소요량을 계산합니다.</p>
     </div>
-    <script>
-        fetch('/api/lots/bom').then(res => res.json()).then(data => {
-            const select = document.getElementById('formulaFileSelect'); select.innerHTML = '';
-            if(data && data.length > 0) { data.forEach(item => { const opt = document.createElement('option'); opt.value = item.filename; opt.textContent = item.filename; if(item.filename.includes('BCE01_BOM')) opt.selected = true; select.appendChild(opt); }); } else { select.innerHTML = '<option value="">가용한 파일 없음</option>'; }
-        }).catch(err => { select.innerHTML = '<option value="">오류 발생</option>'; });
+</div>
 
-        function calculateBOM() {
-            const formulaFile = document.getElementById('formulaFileSelect').value;
-            const targetQty = document.getElementById('targetQty').value;
-            document.getElementById('emptyState').style.display = 'none'; document.getElementById('resultArea').style.display = 'none'; document.getElementById('spinner').style.display = 'block';
+<!-- Control Panel -->
+<section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white mb-8">
+    <h2 class="text-lg font-bold text-on-surface flex items-center gap-2 mb-6">
+        <span class="material-symbols-outlined text-primary">data_object</span> 분석 대상 설정
+    </h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">수식 마스터 파일 선택</label>
+            <select id="formulaFileSelect" class="w-full bg-surface-container-low border border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none">
+                <option value="">파일 목록을 불러오는 중...</option>
+            </select>
+        </div>
+        <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">목표 생산량 (Kit)</label>
+            <div class="flex gap-3">
+                <input type="number" id="targetQty" placeholder="수량을 입력하세요" min="1" value="256" class="flex-1 bg-surface-container-low border border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none" />
+                <button onclick="calculateBOM()" class="bg-primary hover:bg-primary-hover text-white font-bold px-6 py-3 rounded-lg flex items-center gap-2 transition-all active:scale-95 shadow-sm whitespace-nowrap">
+                    <span class="material-symbols-outlined text-[20px]">auto_awesome</span> 전개
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
 
-            fetch('/api/generate_bom', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ formula_file: formulaFile, target_qty: targetQty })
-            }).then(res => res.json()).then(data => {
-                document.getElementById('spinner').style.display = 'none';
-                if (data.error) { alert(data.error); return; }
-                renderResults(data); document.getElementById('resultArea').style.display = 'block';
-            }).catch(err => { document.getElementById('spinner').style.display = 'none'; alert("오류가 발생했습니다."); });
+<!-- Loading Spinner -->
+<div id="spinner" class="hidden flex-col items-center justify-center py-20 bg-surface-container-lowest rounded-2xl cloud-shadow border border-white mb-8">
+    <span class="material-symbols-outlined text-primary text-5xl animate-spin">progress_activity</span>
+    <p class="mt-4 text-primary font-bold text-sm tracking-widest uppercase">BOM 소요량을 전개하고 있습니다...</p>
+</div>
+
+<!-- Empty State -->
+<div id="emptyState" class="bg-surface-container-low/30 rounded-2xl p-20 flex flex-col items-center justify-center text-center border-2 border-dashed border-slate-300">
+    <div class="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-4 cloud-shadow">
+        <span class="material-symbols-outlined text-3xl text-slate-400">account_tree</span>
+    </div>
+    <h3 class="text-lg font-bold text-slate-700 mb-2">분석 대기 중</h3>
+    <p class="text-sm text-slate-500">마스터 수식과 목표 생산량을 입력한 뒤 전개 버튼을 눌러주세요.</p>
+</div>
+
+<!-- Results Section -->
+<section id="resultArea" class="hidden space-y-6">
+    <div class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white flex flex-col">
+        <div class="flex items-center gap-3 mb-6 bg-surface-container-low p-4 rounded-xl border border-surface-variant">
+            <span class="material-symbols-outlined text-primary">info</span>
+            <div id="summaryInfo" class="text-sm font-bold text-slate-700"></div>
+        </div>
+
+        <div class="space-y-8">
+            <!-- Level 1 -->
+            <div class="level-section">
+                <div class="bg-surface-container-lowest border-x border-t border-surface-variant rounded-t-xl px-5 py-3 flex justify-between items-center bg-slate-50">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-2">
+                        <span class="bg-primary text-white text-[10px] px-2 py-0.5 rounded uppercase tracking-wider">Level 1</span> 포장 / 완제품
+                    </h3>
+                    <span id="l1Count" class="text-xs font-bold text-slate-500 bg-white px-2 py-1 rounded border border-surface-variant">0 항목</span>
+                </div>
+                <div class="overflow-x-auto border border-surface-variant rounded-b-xl hide-scrollbar">
+                    <table class="w-full text-left border-collapse bg-white">
+                        <thead class="bg-surface-container-low sticky top-0">
+                            <tr class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-surface-variant">
+                                <th class="py-3 px-5 w-1/4">상위 Lot</th>
+                                <th class="py-3 px-5 w-1/4">생산 Lot</th>
+                                <th class="py-3 px-5 w-1/4">명칭 / 구성품</th>
+                                <th class="py-3 px-5 w-[15%] text-right">소요량</th>
+                                <th class="py-3 px-5 w-[10%]">단위</th>
+                            </tr>
+                        </thead>
+                        <tbody id="l1Table" class="text-sm divide-y divide-surface-container-low"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Level 2 -->
+            <div class="level-section">
+                <div class="bg-surface-container-lowest border-x border-t border-surface-variant rounded-t-xl px-5 py-3 flex justify-between items-center bg-slate-50">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-2">
+                        <span class="bg-[#8b5cf6] text-white text-[10px] px-2 py-0.5 rounded uppercase tracking-wider">Level 2</span> 반제품 제조
+                    </h3>
+                    <span id="l2Count" class="text-xs font-bold text-slate-500 bg-white px-2 py-1 rounded border border-surface-variant">0 항목</span>
+                </div>
+                <div class="overflow-x-auto border border-surface-variant rounded-b-xl hide-scrollbar">
+                    <table class="w-full text-left border-collapse bg-white">
+                        <thead class="bg-surface-container-low sticky top-0">
+                            <tr class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-surface-variant">
+                                <th class="py-3 px-5 w-1/4">상위 Lot</th>
+                                <th class="py-3 px-5 w-1/4">생산 Lot</th>
+                                <th class="py-3 px-5 w-1/4">명칭 / 구성품</th>
+                                <th class="py-3 px-5 w-[15%] text-right">소요량</th>
+                                <th class="py-3 px-5 w-[10%]">단위</th>
+                            </tr>
+                        </thead>
+                        <tbody id="l2Table" class="text-sm divide-y divide-surface-container-low"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Level 3 -->
+            <div class="level-section">
+                <div class="bg-surface-container-lowest border-x border-t border-surface-variant rounded-t-xl px-5 py-3 flex justify-between items-center bg-slate-50">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-2">
+                        <span class="bg-[#10b981] text-white text-[10px] px-2 py-0.5 rounded uppercase tracking-wider">Level 3</span> 하위 조제
+                    </h3>
+                    <span id="l3Count" class="text-xs font-bold text-slate-500 bg-white px-2 py-1 rounded border border-surface-variant">0 항목</span>
+                </div>
+                <div class="overflow-x-auto border border-surface-variant rounded-b-xl hide-scrollbar">
+                    <table class="w-full text-left border-collapse bg-white">
+                        <thead class="bg-surface-container-low sticky top-0">
+                            <tr class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-surface-variant">
+                                <th class="py-3 px-5 w-1/4">상위 Lot</th>
+                                <th class="py-3 px-5 w-1/4">생산 Lot</th>
+                                <th class="py-3 px-5 w-1/4">명칭 / 구성품</th>
+                                <th class="py-3 px-5 w-[15%] text-right">소요량</th>
+                                <th class="py-3 px-5 w-[10%]">단위</th>
+                            </tr>
+                        </thead>
+                        <tbody id="l3Table" class="text-sm divide-y divide-surface-container-low"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    fetch('/api/lots/bom').then(res => res.json()).then(data => {
+        const select = document.getElementById('formulaFileSelect'); select.innerHTML = '';
+        if(data && data.length > 0) { 
+            data.forEach(item => { 
+                const opt = document.createElement('option'); 
+                opt.value = item.filename; 
+                opt.textContent = item.filename; 
+                if(item.filename.includes('BCE01_BOM')) opt.selected = true; 
+                select.appendChild(opt); 
+            }); 
+        } else { 
+            select.innerHTML = '<option value="">가용한 파일 없음</option>'; 
+        }
+    }).catch(err => { select.innerHTML = '<option value="">오류 발생</option>'; });
+
+    function calculateBOM() {
+        const formulaFile = document.getElementById('formulaFileSelect').value;
+        const targetQty = document.getElementById('targetQty').value;
+        document.getElementById('emptyState').style.display = 'none'; 
+        document.getElementById('resultArea').style.display = 'none'; 
+        document.getElementById('spinner').style.display = 'flex';
+
+        fetch('/api/generate_bom', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ formula_file: formulaFile, target_qty: targetQty })
+        }).then(res => res.json()).then(data => {
+            document.getElementById('spinner').style.display = 'none';
+            if (data.error) { 
+                alert(data.error); 
+                document.getElementById('emptyState').style.display = 'flex'; 
+                return; 
+            }
+            renderResults(data); 
+            document.getElementById('resultArea').style.display = 'block';
+        }).catch(err => { 
+            document.getElementById('spinner').style.display = 'none'; 
+            document.getElementById('emptyState').style.display = 'flex'; 
+            alert("오류가 발생했습니다."); 
+        });
+    }
+
+    function renderResults(data) {
+        document.getElementById('summaryInfo').innerText = `마스터 파일 [${data.level0.제품명.replace('전개 소스: ', '')}] 사용. (목표수량: ${data.level0.목표수량})`;
+        renderTable('l1Table', 'l1Count', data.level1); 
+        renderTable('l2Table', 'l2Count', data.level2); 
+        renderTable('l3Table', 'l3Count', data.level3);
+    }
+
+    function renderTable(tableId, countId, items) {
+        const tbody = document.getElementById(tableId); 
+        tbody.innerHTML = '';
+        document.getElementById(countId).innerText = `${items.length} 항목`;
+        
+        if (items.length === 0) { 
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 font-medium">해당 데이터가 없습니다.</td></tr>`; 
+            return; 
         }
 
-        function renderResults(data) {
-            document.getElementById('summaryInfo').innerText = `파일 [${data.level0.제품명.replace('전개 소스: ', '')}]을(를) 사용. (목표수량: ${data.level0.목표수량})`;
-            renderTable('l1Table', 'l1Count', data.level1); renderTable('l2Table', 'l2Count', data.level2); renderTable('l3Table', 'l3Count', data.level3);
-        }
-
-        function renderTable(tableId, countId, items) {
-            const tbody = document.getElementById(tableId); tbody.innerHTML = '';
-            document.getElementById(countId).innerText = `${items.length} 항목`;
-            if (items.length === 0) { tbody.innerHTML = `<tr><td colspan="5" style="text-align: center;">해당 데이터가 없습니다.</td></tr>`; return; }
-
-            items.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${item['상위Lot']}</td>
-                    <td style="font-weight: 600; color: var(--primary);">${item['생산Lot'] || ''}</td>
-                    <td><span style="font-size: 0.85rem; color: var(--text-muted);">${item['명칭 / 구성품']}</span></td>
-                    <td class="highlight">${item['계산된_소요량'].toLocaleString()}</td>
-                    <td><span style="font-size:0.75rem; color:gray">${item['단위']}</span></td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-    </script>
-</body>
-</html>
+        items.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-50 transition-colors";
+            tr.innerHTML = `
+                <td class="py-4 px-5 text-slate-500 font-mono text-xs">${item['상위Lot']}</td>
+                <td class="py-4 px-5 font-bold text-primary font-mono text-xs tracking-wider">${item['생산Lot'] || '-'}</td>
+                <td class="py-4 px-5 font-medium text-slate-700">${item['명칭 / 구성품']}</td>
+                <td class="py-4 px-5 text-right font-black text-slate-800">${item['계산된_소요량'].toLocaleString()}</td>
+                <td class="py-4 px-5 text-[10px] text-slate-400 font-medium">${item['단위']}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+</script>
+{% endblock %}

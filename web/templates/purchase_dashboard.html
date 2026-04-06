@@ -1,639 +1,494 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MES 통합 관리 시스템 - 구매내역 정밀 분석</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        :root {
-            --primary: #3b82f6;
-            --primary-dark: #2563eb;
-            --bg-dark: #0f172a;
-            --panel-bg: rgba(30, 41, 59, 0.7);
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --radius-lg: 12px;
-            --radius-md: 8px;
-            --border: rgba(255, 255, 255, 0.1);
-            --up: #ef4444;
-            --down: #10b981;
-        }
+{% extends "base.html" %}
 
-        body {
-            margin: 0;
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: var(--text-main);
-            min-height: 100vh;
-        }
+{% set active_nav = 'purchase_dashboard' %}
 
-        /* ─── Global Top Navigation (Synced with style.css) ─── */
-        .top-header {
-            position: fixed; top: 0; left: 0; right: 0;
-            height: 52px; background: rgba(15, 23, 42, 0.9);
-            backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 1.5rem; z-index: 1000;
-        }
-        .header-brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: #fff; font-weight: 700; }
-        .header-brand span { font-size: 0.95rem; letter-spacing: -0.02em; }
-        .brand-logo { height: 24px; width: auto; object-fit: contain; }
-        .header-nav { display: flex; gap: 0.4rem; align-items: center; height: 100%; }
-        .nav-btn {
-            color: var(--text-muted); text-decoration: none; padding: 0.4rem 0.75rem;
-            border-radius: 6px; font-size: 0.8rem; font-weight: 500;
-            display: flex; align-items: center; gap: 0.4rem; transition: all 0.2s;
-            background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05);
-            white-space: nowrap;
-        }
-        .nav-btn i { font-size: 0.85rem; color: var(--primary); opacity: 0.8; }
-        .nav-btn:hover { background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); color: #fff; transform: translateY(-1px); }
-        .nav-btn.active { background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.5); color: #fff; box-shadow: 0 0 15px rgba(59, 130, 246, 0.1); }
-        .nav-btn.active i { opacity: 1; color: #60a5fa; }
+{% block title %}MES 통합 관리 시스템 - 구매내역 정밀 분석 | Kinetic MES{% endblock %}
 
-        .main-content {
-            padding: calc(52px + 2rem) 2.5rem 2rem;
-            max-width: 1600px;
-            margin: 0 auto;
-        }
+{% block extra_head %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
 
-        .page-header {
-            margin-bottom: 2rem;
-        }
+{% block content %}
+<!-- Loading Overlay -->
+<div id="loading" class="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-sm flex flex-col justify-center items-center">
+    <span class="material-symbols-outlined text-white text-6xl animate-spin mb-4">progress_activity</span>
+    <div class="text-white font-bold tracking-widest uppercase">구매 데이터 정밀 분석 중...</div>
+</div>
 
-        .page-title {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
+<!-- Page Header -->
+<div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div>
+        <h1 class="text-3xl font-bold text-on-surface tracking-tight flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary text-4xl">monitoring</span>
+            구매 데이터 정밀 분석
+        </h1>
+        <p class="text-slate-500 font-medium text-sm mt-2">기간, 분류, 품명에 따른 구매 내역을 추적하고 단가 변동 흐름을 분석합니다.</p>
+    </div>
+</div>
 
-        /* Filter Panel */
-        .filter-panel {
-            background: var(--panel-bg);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            align-items: end;
-        }
+<!-- Filter Panel -->
+<section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+        <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">조회 시작일</label>
+            <input type="date" id="startDate" class="w-full bg-surface-container-low border border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none shadow-sm">
+        </div>
+        <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">조회 종료일</label>
+            <input type="date" id="endDate" class="w-full bg-surface-container-low border border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none shadow-sm">
+        </div>
+        <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">분류 구분</label>
+            <select id="categoryDropdown" class="w-full bg-surface-container-low border border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none shadow-sm" onchange="onCategoryChange()">
+                <option value="">전체 구분</option>
+                <option value="밸리데이션">밸리데이션</option>
+                <option value="원료">원료</option>
+            </select>
+        </div>
+        <div class="flex flex-col gap-2 relative">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">분석 품명1 선택 <span class="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded ml-1">상세분석</span></label>
+            <select id="productDropdown" class="w-full bg-primary/5 border border-primary/20 focus:border-primary focus:bg-white text-primary rounded-lg px-4 py-3 text-sm font-bold transition-all outline-none shadow-sm">
+                <option value="">-- 품명을 선택하세요 --</option>
+            </select>
+            <div class="absolute -top-2 -right-2">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-6 flex justify-end">
+        <button onclick="performSearch()" class="bg-primary hover:bg-primary-hover text-white font-bold px-8 py-3 rounded-lg flex items-center gap-2 transition-all active:scale-95 shadow-md">
+            <span class="material-symbols-outlined text-[20px]">search</span> 데이터 조회
+        </button>
+    </div>
+</section>
 
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
+<!-- Summary Panel -->
+<div id="summaryPanel" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+    <div class="bg-surface-container-lowest border-y border-r border-l-4 border-l-primary rounded-xl p-5 cloud-shadow flex flex-col justify-center">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">총 구매 건수</span>
+        <span id="sum-count" class="text-2xl font-black text-slate-800">0건</span>
+    </div>
+    <div class="bg-surface-container-lowest border-y border-r border-l-4 border-l-primary rounded-xl p-5 cloud-shadow flex flex-col justify-center">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">총 구매 금액 합계</span>
+        <span id="sum-total" class="text-2xl font-black text-primary">₩0</span>
+    </div>
+    <div class="bg-surface-container-lowest border-y border-r border-l-4 border-l-indigo-500 rounded-xl p-5 cloud-shadow flex flex-col justify-center">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">평균 실단가</span>
+        <span id="sum-avg" class="text-2xl font-black text-indigo-600">₩0</span>
+    </div>
+    <div class="bg-surface-container-lowest border-x border-y border-surface-variant rounded-xl p-5 cloud-shadow flex flex-col justify-center col-span-1 lg:col-span-2 relative overflow-hidden group hover:border-primary/30 transition-colors">
+        <div class="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
+            <span class="material-symbols-outlined text-9xl">storefront</span>
+        </div>
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 relative z-10">주요 구매처</span>
+        <div id="sum-vendors" class="text-sm font-bold text-slate-700 leading-relaxed truncate relative z-10">-</div>
+    </div>
+</div>
 
-        .filter-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; }
+<!-- Chart Section -->
+<div id="chartSection" class="hidden mb-8">
+    <div class="bg-surface-container-lowest p-6 rounded-2xl cloud-shadow border border-white h-[400px] flex flex-col">
+        <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">show_chart</span> 
+            <span id="chartTitle">단가 변동 흐름</span>
+        </h3>
+        <div class="flex-1 relative w-full h-full">
+            <canvas id="priceChart"></canvas>
+        </div>
+    </div>
+</div>
 
-        .filter-input {
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            padding: 0.65rem 0.8rem;
-            color: #fff;
-            font-size: 0.9rem;
-            outline: none;
-            transition: all 0.2s;
-        }
-        select.filter-input {
-            cursor: pointer;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 0.7rem center;
-            background-size: 1rem;
-            padding-right: 2rem;
-        }
-
-        .filter-input:focus { border-color: var(--primary); background: rgba(15, 23, 42, 0.9); }
-
-        .search-btn {
-            background: var(--primary);
-            color: #fff;
-            border: none;
-            border-radius: var(--radius-md);
-            padding: 0.7rem 1.5rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-        }
-        .search-btn:hover { background: var(--primary-dark); }
-
-        /* Chart Area */
-        .chart-section { display: none; margin-bottom: 1.5rem; }
-        .chart-card {
-            background: var(--panel-bg);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            height: 380px;
-            position: relative;
-        }
-
-        /* Summary Panel (Footer) */
-        .summary-panel {
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            border-radius: var(--radius-lg);
-            padding: 1.2rem 1.5rem;
-            margin-bottom: 1.5rem;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .summary-item { display: flex; flex-direction: column; gap: 0.5rem; }
-        .summary-label { font-size: 0.85rem; color: var(--text-muted); }
-        .summary-value { font-size: 1.25rem; font-weight: 700; color: #fff; }
-        .summary-list { font-size: 0.9rem; line-height: 1.4; color: var(--text-main); }
-
-        /* Table Section */
-        .table-container {
-            background: var(--panel-bg);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 1rem;
-            overflow-x: auto;
-        }
-
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        th {
-            text-align: left; padding: 0.8rem 1rem; color: var(--text-muted); font-weight: 600;
-            border-bottom: 1px solid var(--border); background: rgba(255, 255, 255, 0.02);
-            white-space: nowrap;
-        }
-        td { padding: 0.8rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); white-space: nowrap; }
-        tr:hover td { background: rgba(255, 255, 255, 0.03); }
-
-        .price-up { color: var(--up); font-weight: 600; }
-        .price-down { color: var(--down); font-weight: 600; }
-        .price-stable { color: var(--text-muted); }
-        .highlight { color: #fff; font-weight: 600; }
-        .badge-validation { background: rgba(59, 130, 246, 0.2); color: #60a5fa; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; }
-        .badge-raw { background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; }
-
-        .loading-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(15, 23, 42, 0.9);
-            display: flex; justify-content: center; align-items: center;
-            z-index: 1000;
-        }
-
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-
-        /* ─── Modal ─── */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-            display: none; justify-content: center; align-items: center;
-            z-index: 1000;
-            opacity: 0; transition: opacity 0.2s;
-        }
-        .modal-overlay.show { display: flex; opacity: 1; }
-        .modal-content {
-            background: #1e293b;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: var(--radius-lg);
-            width: 95%; max-width: 1400px; max-height: 85vh;
-            display: flex; flex-direction: column;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-            transform: translateY(20px); transition: transform 0.2s;
-        }
-        .modal-overlay.show .modal-content { transform: translateY(0); }
-        .modal-header {
-            padding: 1.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex; justify-content: space-between; align-items: center;
-            background: rgba(15, 23, 42, 0.4); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-        }
-        .modal-header h3 { margin: 0; font-size: 1.2rem; color: #fff; display: flex; align-items: center; gap: 0.6rem; }
-        .modal-header h3 i { color: var(--primary); }
-        .modal-close {
-            background: transparent; border: none; color: var(--text-muted);
-            font-size: 1.25rem; cursor: pointer; transition: color 0.2s;
-        }
-        .modal-close:hover { color: #fff; }
-        .modal-body {
-            padding: 1.5rem; overflow-y: auto; flex: 1;
-        }
-        .modal-table { width: 100%; border-collapse: collapse; }
-        .modal-table th, .modal-table td {
-            padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            font-size: 0.85rem;
-            color: #fff;
-        }
-        .modal-table th { color: var(--text-muted); font-weight: 600; background: rgba(255, 255, 255, 0.02); position: sticky; top: 0; }
-        
-        .doc-link { 
-            color: #60a5fa; 
-            text-decoration: underline; 
-            text-underline-offset: 3px; 
-            cursor: pointer; 
-            font-family: monospace; 
-            font-size: 0.8rem;
-            padding: 2px 4px;
-            border-radius: 4px;
-            transition: background 0.2s;
-        }
-        .doc-link:hover { background: rgba(59, 130, 246, 0.15); color: #93c5fd; }
-    </style>
-</head>
-<body>
-    <div id="loading" class="loading-overlay">
-        <div><i class="fa-solid fa-circle-notch fa-spin fa-2x"></i> 정밀 분석 중...</div>
+<!-- Table Section -->
+<section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white flex flex-col min-h-[400px]">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">table_chart</span> 구매 내역 <span class="bg-surface-container-low text-primary px-2 py-0.5 rounded text-xs ml-2 uppercase tracking-widest">Detail</span>
+        </h2>
     </div>
 
-    <header class="top-header">
-        <a href="/" class="header-brand">
-            <img src="/static/img/logo.png" alt="Logo" class="brand-logo">
-            <span>생산관리팀 통합 관리</span>
-        </a>
-        <nav class="header-nav">
-            <a href="/" class="nav-btn">
-                <i class="fa-solid fa-house"></i>
-                재고현황
-            </a>
-            <a href="/material-info" class="nav-btn">
-                <i class="fa-solid fa-list-ul"></i>
-                안전재고
-            </a>
-            <a href="/purchase-dashboard" class="nav-btn active">
-                <i class="fa-solid fa-chart-line"></i>
-                구매 대시보드
-            </a>
-            <a href="/facilities" class="nav-btn">
-                <i class="fa-solid fa-tools"></i>
-                설비 관리
-            </a>
-            <a href="/inventory" class="nav-btn">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                원료상세검색
-            </a>
-            <a href="/raw-material" class="nav-btn">
-                <i class="fa-solid fa-flask"></i>
-                원재료관리
-            </a>
-            <a href="/producible" class="nav-btn">
-                <i class="fa-solid fa-flask-vial"></i>
-                생산가능수량
-            </a>
-                        <div class="nav-dropdown">
-                <a href="/production" class="nav-btn">
-                    <i class="fa-solid fa-industry"></i>
-                    생산 관리 <i class="fa-solid fa-chevron-down" style="font-size: 0.7rem; margin-left: 5px;"></i>
-                </a>
-                <div class="dropdown-content">
-                    <a href="/production"><i class="fa-solid fa-calculator"></i>생산 지시</a>
-                    <a href="/mo-management"><i class="fa-solid fa-file-contract"></i>MO 생성</a>
-                    <a href="/bom-calculator"><i class="fa-solid fa-sitemap"></i>BOM 계산기</a>
-                </div>
-            </div>
-            <a href="/finished-product" class="nav-btn">
-                <i class="fa-solid fa-box"></i>
-                완제품관리
-            </a>
-            <a href="/validation" class="nav-btn">
-                <i class="fa-solid fa-clipboard-check"></i>
-                밸리데이션
-            </a>
-            <a href="/calibration" class="nav-btn">
-                <i class="fa-solid fa-compass-drafting"></i>
-                검교정
-            </a>
-            <a href="/upload-usage" class="nav-btn">
-                <i class="fa-solid fa-file-arrow-up"></i>
-                사용량 업로드
-            </a>
-            <a href="/upload-receiving" class="nav-btn">
-                <i class="fa-solid fa-file-import"></i>
-                입고 업로드
-            </a>
-        </nav>
-    </header>
+    <div class="overflow-x-auto border border-surface-variant rounded-xl hide-scrollbar flex-1">
+        <table class="w-full text-left border-collapse">
+            <thead id="tableHead" class="bg-surface-container-low sticky top-0 z-10">
+                <!-- 동적 헤더 -->
+            </thead>
+            <tbody id="tableBody" class="text-sm divide-y divide-surface-container-low bg-white">
+                <tr><td colspan="8" class="text-center py-12 text-slate-400 font-medium"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 데이터를 기다리는 중...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
 
-    <main class="main-content">
-        <div class="page-header">
-            <h1 class="page-title"><i class="fa-solid fa-receipt" style="color:var(--primary);"></i> 구매 데이터 정밀 분석</h1>
-        </div>
-
-        <div class="filter-panel">
-            <div class="filter-group">
-                <label class="filter-label">조회 시작일</label>
-                <input type="date" id="startDate" class="filter-input">
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">조회 종료일</label>
-                <input type="date" id="endDate" class="filter-input">
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">분류 구분</label>
-                <select id="categoryDropdown" class="filter-input" onchange="onCategoryChange()">
-                    <option value="">전체 구분</option>
-                    <option value="밸리데이션">밸리데이션</option>
-                    <option value="원료">원료</option>
-                </select>
-            </div>
-            <div class="filter-group" style="flex-grow: 1;">
-                <label class="filter-label">분석 품명1 선택 (상세 분석용)</label>
-                <select id="productDropdown" class="filter-input">
-                    <option value="">-- 품명을 선택하세요 --</option>
-                </select>
-            </div>
-            <button onclick="performSearch()" class="search-btn">
-                <i class="fa-solid fa-magnifying-glass"></i> 데이터 조회
+<!-- Document Detail Modal -->
+<div id="doc-modal" class="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center opacity-0 transition-opacity duration-200" onclick="if(event.target===this) closeDocModal()">
+    <div class="bg-white rounded-2xl w-11/12 max-w-7xl max-h-[85vh] flex flex-col cloud-shadow transform translate-y-4 transition-transform duration-200" id="doc-modal-content">
+        <div class="px-6 py-5 border-b border-surface-variant flex justify-between items-center bg-surface-container-low rounded-t-2xl">
+            <h3 class="font-bold text-lg text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">receipt_long</span> 
+                <span id="modal-doc-title">문서 상세 내역</span>
+            </h3>
+            <button class="text-slate-400 hover:text-slate-700 transition-colors" onclick="closeDocModal()">
+                <span class="material-symbols-outlined text-2xl">close</span>
             </button>
         </div>
-
-        <!-- Summary Panel (Moved below filter) -->
-        <div id="summaryPanel" class="summary-panel">
-            <div class="summary-item">
-                <span class="summary-label">총 구매 건수</span>
-                <span id="sum-count" class="summary-value">0건</span>
-            </div>
-            <div class="summary-item">
-                <span class="summary-label">총 구매 금액 합계</span>
-                <span id="sum-total" class="summary-value" style="color: var(--primary);">₩0</span>
-            </div>
-            <div class="summary-item">
-                <span class="summary-label">평균 실단가</span>
-                <span id="sum-avg" class="summary-value">₩0</span>
-            </div>
-            <div class="summary-item" style="grid-column: span 2;">
-                <span class="summary-label">주요 구매처</span>
-                <div id="sum-vendors" class="summary-list">-</div>
-            </div>
-        </div>
-
-        <div id="chartSection" class="chart-section">
-            <div class="chart-card">
-                <canvas id="priceChart"></canvas>
-            </div>
-        </div>
-
-        <div class="table-container">
-            <table>
-                <thead id="tableHead"></thead>
-                <tbody id="tableBody"></tbody>
+        <div class="overflow-x-auto hide-scrollbar flex-1 bg-white rounded-b-2xl">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-surface-container-highest sticky top-0 z-10 shadow-sm border-b border-surface-variant">
+                    <tr class="text-[10px] font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap">
+                        <th class="py-3 px-4">작성일자</th>
+                        <th class="py-3 px-4">작성자</th>
+                        <th class="py-3 px-4">Cat.No</th>
+                        <th class="py-3 px-4">제조사</th>
+                        <th class="py-3 px-4">구매처</th>
+                        <th class="py-3 px-4">규격</th>
+                        <th class="py-3 px-4 text-center">단위</th>
+                        <th class="py-3 px-4 text-right">수량</th>
+                        <th class="py-3 px-4 text-right text-primary">단가</th>
+                        <th class="py-3 px-4 text-right text-primary">금액</th>
+                        <th class="py-3 px-4">담당자</th>
+                        <th class="py-3 px-4">연락처</th>
+                        <th class="py-3 px-4">E-mail</th>
+                    </tr>
+                </thead>
+                <tbody id="modal-tbody" class="text-sm divide-y divide-surface-container-low">
+                    <!-- 동적 삽입 -->
+                </tbody>
             </table>
         </div>
-    </main>
+    </div>
+</div>
+{% endblock %}
 
-    <script>
-        let allData = [];
-        let priceChartInstance = null;
+{% block extra_scripts %}
+<style>
+    /* Add transition styles for UI elements */
+    .price-up { color: #e11d48; font-weight: 700; display:flex; align-items:center; gap:0.25rem; justify-content:center;} /* text-rose-600 (▲) */
+    .price-down { color: #16a34a; font-weight: 700; display:flex; align-items:center; gap:0.25rem; justify-content:center;} /* text-green-600 (▼) */
+    .price-stable { color: #94a3b8; display:flex; align-items:center; justify-content:center; }
+    
+    .doc-link { 
+        color: #3b82f6; 
+        text-decoration: underline; 
+        text-underline-offset: 4px; 
+        cursor: pointer; 
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.8rem;
+        padding: 4px 8px;
+        background: #eff6ff;
+        border-radius: 6px;
+        transition: all 0.2s;
+        font-weight: 700;
+    }
+    .doc-link:hover { background: #dbeafe; color: #1d4ed8; }
+</style>
+<script>
+    let allData = [];
+    let priceChartInstance = null;
 
-        async function init() {
-            try {
-                const res = await fetch('/api/purchase/info');
-                const result = await res.json();
+    async function init() {
+        try {
+            const res = await fetch('/api/purchase/info');
+            const result = await res.json();
+            
+            if (result.status === 'success') {
+                allData = result.data;
                 
-                if (result.status === 'success') {
-                    allData = result.data;
-                    
-                    if (allData.length > 0) {
-                        // 최초 구매일 찾기
-                        const dates = allData.map(d => new Date(d.작성일자)).filter(d => !isNaN(d));
-                        const minDate = new Date(Math.min(...dates));
-                        const maxDate = new Date(); // 오늘
+                if (allData.length > 0) {
+                    // 최초 구매일 찾기
+                    const dates = allData.map(d => new Date(d.작성일자)).filter(d => !isNaN(d));
+                    const minDate = new Date(Math.min(...dates));
+                    const maxDate = new Date(); // 오늘
 
-                        document.getElementById('startDate').value = minDate.toISOString().split('T')[0];
-                        document.getElementById('endDate').value = maxDate.toISOString().split('T')[0];
-                    }
-                    
-                    onCategoryChange();
-                    performSearch();
+                    document.getElementById('startDate').value = minDate.toISOString().split('T')[0];
+                    document.getElementById('endDate').value = maxDate.toISOString().split('T')[0];
                 }
-            } catch (err) { console.error(err); }
-            finally { document.getElementById('loading').style.display = 'none'; }
-        }
-
-        function onCategoryChange() {
-            const category = document.getElementById('categoryDropdown').value;
-            const select = document.getElementById('productDropdown');
-            select.innerHTML = '<option value="">-- 품명을 선택하세요 --</option>';
-            
-            let filteredProducts = [];
-            if (category) {
-                filteredProducts = [...new Set(allData.filter(d => d.구분 === category).map(d => d.품명1).filter(Boolean))].sort();
-            } else {
-                filteredProducts = [...new Set(allData.map(d => d.품명1).filter(Boolean))].sort();
+                
+                onCategoryChange();
+                performSearch();
             }
-            
-            filteredProducts.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p; opt.textContent = p;
-                select.appendChild(opt);
-            });
+        } catch (err) { console.error(err); }
+        finally { 
+            const loader = document.getElementById('loading');
+            loader.style.opacity = '0';
+            setTimeout(() => loader.style.display = 'none', 300);
         }
+    }
 
-        function performSearch() {
-            const start = document.getElementById('startDate').value;
-            const end = document.getElementById('endDate').value;
-            const category = document.getElementById('categoryDropdown').value;
-            const product = document.getElementById('productDropdown').value;
+    function onCategoryChange() {
+        const category = document.getElementById('categoryDropdown').value;
+        const select = document.getElementById('productDropdown');
+        select.innerHTML = '<option value="">-- 품명을 선택하세요 --</option>';
+        
+        let filteredProducts = [];
+        if (category) {
+            filteredProducts = [...new Set(allData.filter(d => d.구분 === category).map(d => d.품명1).filter(Boolean))].sort();
+        } else {
+            filteredProducts = [...new Set(allData.map(d => d.품명1).filter(Boolean))].sort();
+        }
+        
+        filteredProducts.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p; opt.textContent = p;
+            select.appendChild(opt);
+        });
+    }
 
-            let filtered = allData.filter(d => {
-                const dDate = new Date(d.작성일자);
-                const dateMatch = (!start || dDate >= new Date(start)) && (!end || dDate <= new Date(end));
-                const catMatch = !category || d.구분 === category;
-                return dateMatch && catMatch;
-            }).sort((a, b) => new Date(a.작성일자) - new Date(b.작성일자));
+    function performSearch() {
+        const start = document.getElementById('startDate').value;
+        const end = document.getElementById('endDate').value;
+        const category = document.getElementById('categoryDropdown').value;
+        const product = document.getElementById('productDropdown').value;
 
-            if (product) {
-                filtered = filtered.filter(d => d.품명1 === product);
-                if (filtered.length > 0) {
-                    renderChart(filtered);
-                    document.getElementById('chartSection').style.display = 'block';
-                    renderTable(filtered, true);
-                    updateSummary(filtered, true);
-                }
-            } else {
-                document.getElementById('chartSection').style.display = 'none';
-                renderTable(filtered, false);
-                updateSummary(filtered, false);
+        let filtered = allData.filter(d => {
+            const dDate = new Date(d.작성일자);
+            const dateMatch = (!start || dDate >= new Date(start)) && (!end || dDate <= new Date(end));
+            const catMatch = !category || d.구분 === category;
+            return dateMatch && catMatch;
+        }).sort((a, b) => new Date(a.작성일자) - new Date(b.작성일자));
+
+        if (product) {
+            filtered = filtered.filter(d => d.품명1 === product);
+            if (filtered.length > 0) {
+                renderChart(filtered, product);
+                document.getElementById('chartSection').style.display = 'block';
+                renderTable(filtered, true);
+                updateSummary(filtered);
             }
+        } else {
+            document.getElementById('chartSection').style.display = 'none';
+            renderTable(filtered, false);
+            updateSummary(filtered);
         }
+    }
 
-        function renderChart(data) {
-            const ctx = document.getElementById('priceChart').getContext('2d');
-            if (priceChartInstance) priceChartInstance.destroy();
+    function renderChart(data, productName) {
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        if (priceChartInstance) priceChartInstance.destroy();
 
-            const prices = data.map(d => d.실단가 || 0);
-            const minPrice = Math.min(...prices);
-            const maxPrice = Math.max(...prices);
-            
-            // Y축 최적화: 최저가보다 10% 낮은 지점부터 시작
-            const yMin = Math.floor(minPrice * 0.9);
+        document.getElementById('chartTitle').innerText = `[${productName}] 단가 변동 흐름`;
 
-            priceChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: data.map(d => d.작성일자),
-                    datasets: [{
-                        label: '실단가 (₩)',
-                        data: prices,
-                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                        borderColor: '#3b82f6',
-                        borderWidth: 1,
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { 
-                        title: { display: true, text: `[${data[0].품명1}] 단가 변동 흐름`, color: '#fff', font: { size: 16, weight: 'bold' } },
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: { 
-                            min: yMin,
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { 
-                                color: '#94a3b8',
-                                callback: value => '₩' + value.toLocaleString()
+        const prices = data.map(d => d.실단가 || 0);
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+        
+        // Y축 최적화: 최저가보다 10% 낮은 지점부터 시작
+        const yMin = Math.floor(minPrice * 0.9);
+
+        Chart.defaults.font.family = "'Inter', sans-serif";
+
+        priceChartInstance = new Chart(ctx, {
+            type: 'line', // 선 차트로 변경하여 흐름을 더 잘 보여주기
+            data: {
+                labels: data.map(d => d.작성일자),
+                datasets: [{
+                    label: '실단가 (₩)',
+                    data: prices,
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#3b82f6',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.2 // 약간의 곡선
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        titleFont: { size: 13 },
+                        bodyFont: { size: 14, weight: 'bold' },
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                return '₩' + context.parsed.y.toLocaleString();
                             }
-                        },
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                        }
+                    }
+                },
+                scales: {
+                    y: { 
+                        min: yMin,
+                        grid: { color: '#f1f5f9' },
+                        border: { display: false },
+                        ticks: { 
+                            color: '#64748b',
+                            font: { size: 11, weight: 'bold' },
+                            callback: value => '₩' + value.toLocaleString()
+                        }
+                    },
+                    x: { 
+                        grid: { display: false }, 
+                        border: { display: false },
+                        ticks: { color: '#64748b', font: { size: 11 } } 
                     }
                 }
-            });
+            }
+        });
+    }
+
+    function renderTable(data, isDetail) {
+        const thead = document.getElementById('tableHead');
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+
+        if (isDetail) {
+            thead.innerHTML = `
+                <tr class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-surface-variant">
+                    <th class="py-3 px-6 whitespace-nowrap">일자</th>
+                    <th class="py-3 px-6 whitespace-nowrap">구매처</th>
+                    <th class="py-3 px-6 whitespace-nowrap">품명1</th>
+                    <th class="py-3 px-6 whitespace-nowrap text-right">입고량</th>
+                    <th class="py-3 px-6 whitespace-nowrap text-right text-primary">실단가</th>
+                    <th class="py-3 px-6 whitespace-nowrap text-center">전기 대비</th>
+                    <th class="py-3 px-6 whitespace-nowrap text-right text-primary">금액</th>
+                </tr>
+            `;
+        } else {
+            thead.innerHTML = `
+                <tr class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-surface-variant">
+                    <th class="py-3 px-6 whitespace-nowrap">일자</th>
+                    <th class="py-3 px-6 whitespace-nowrap text-center">구분</th>
+                    <th class="py-3 px-6 whitespace-nowrap">문서번호</th>
+                    <th class="py-3 px-6 whitespace-nowrap">품명1</th>
+                    <th class="py-3 px-6 whitespace-nowrap">구매처</th>
+                    <th class="py-3 px-6 whitespace-nowrap text-right">수량</th>
+                    <th class="py-3 px-6 whitespace-nowrap text-right text-primary">금액</th>
+                </tr>
+            `;
         }
 
-        function renderTable(data, isDetail) {
-            const thead = document.getElementById('tableHead');
-            const tbody = document.getElementById('tableBody');
-            tbody.innerHTML = '';
+        const displayData = [...data].reverse();
+        
+        if (displayData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-slate-400 font-medium">검색 결과가 없습니다.</td></tr>`;
+            return;
+        }
+
+        displayData.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-50 transition-colors cursor-default";
 
             if (isDetail) {
-                thead.innerHTML = `<tr><th>일자</th><th>구매처</th><th>품명1</th><th style="text-align:right;">입고량</th><th style="text-align:right;">실단가</th><th style="text-align:center;">전기 대비</th><th style="text-align:right;">금액</th></tr>`;
-            } else {
-                thead.innerHTML = `<tr><th>일자</th><th>구분</th><th>문서번호</th><th>품명1</th><th>구매처</th><th style="text-align:right;">수량</th><th style="text-align:right;">금액</th></tr>`;
-            }
-
-            const displayData = [...data].reverse();
-            displayData.forEach(item => {
-                const tr = document.createElement('tr');
-                if (isDetail) {
-                    const idx = data.indexOf(item);
-                    const prev = idx > 0 ? data[idx - 1] : null;
-                    let diffHtml = '<span class="price-stable">-</span>';
-                    if (prev) {
-                        const d = (item.실단가 || 0) - (prev.실단가 || 0);
-                        if (d > 0) diffHtml = `<span class="price-up">▲ ₩${d.toLocaleString()}</span>`;
-                        else if (d < 0) diffHtml = `<span class="price-down">▼ ₩${Math.abs(d).toLocaleString()}</span>`;
-                    }
-                    tr.innerHTML = `<td>${item.작성일자}</td><td>${item.구매처}</td><td class="highlight">${item.품명1}</td><td style="text-align:right;">${(item.실입고량 || 0).toLocaleString()}</td><td style="text-align:right;">₩${(item.실단가 || 0).toLocaleString()}</td><td style="text-align:center;">${diffHtml}</td><td style="text-align:right;">₩${(item.금액 || 0).toLocaleString()}</td>`;
-                } else {
-                    const badge = item.구분 === '밸리데이션' ? 'badge-validation' : 'badge-raw';
-                    const dateLink = `<span class="doc-link" onclick="openDateModal('${item.작성일자}')">${item.작성일자}</span>`;
-                    tr.innerHTML = `<td>${dateLink}</td><td><span class="${badge}">${item.구분}</span></td><td>${item.문서번호 || '-'}</td><td class="highlight">${item.품명1}</td><td>${item.구매처}</td><td style="text-align:right;">${(item.수량 || 0).toLocaleString()}</td><td style="text-align:right;">₩${(item.금액 || 0).toLocaleString()}</td>`;
+                // 역순된 displayData 내에서 인덱스를 찾을 경우: 원본 data 배열에서의 인덱스를 사용
+                const originalIdx = data.indexOf(item);
+                const prev = originalIdx > 0 ? data[originalIdx - 1] : null; // data는 날짜 오름차순
+                
+                let diffHtml = '<span class="price-stable">-</span>';
+                if (prev) {
+                    const d = (item.실단가 || 0) - (prev.실단가 || 0);
+                    if (d > 0) diffHtml = `<span class="price-up"><span class="material-symbols-outlined text-[16px]">arrow_upward</span> ₩${d.toLocaleString()}</span>`;
+                    else if (d < 0) diffHtml = `<span class="price-down"><span class="material-symbols-outlined text-[16px]">arrow_downward</span> ₩${Math.abs(d).toLocaleString()}</span>`;
                 }
-                tbody.appendChild(tr);
-            });
-        }
-
-        function updateSummary(data, isDetail) {
-            const count = data.length;
-            const total = data.reduce((sum, d) => sum + (d.금액 || 0), 0);
-            const vendors = [...new Set(data.map(d => d.구매처).filter(Boolean))].sort();
-            
-            // 평균 실단가 계산
-            let avgPrice = 0;
-            if (count > 0) {
-                const priceSum = data.reduce((sum, d) => sum + (d.실단가 || 0), 0);
-                avgPrice = Math.round(priceSum / count);
-            }
-
-            document.getElementById('sum-count').innerText = count.toLocaleString() + '건';
-            document.getElementById('sum-total').innerText = '₩' + total.toLocaleString();
-            document.getElementById('sum-avg').innerText = '₩' + avgPrice.toLocaleString();
-            document.getElementById('sum-vendors').innerText = vendors.length > 0 ? vendors.join(', ') : '-';
-        }
-
-        init();
-
-        // ── Modal Functions ──
-        function openDateModal(date) {
-            const modal = document.getElementById('doc-modal');
-            document.getElementById('modal-doc-title').innerText = `[${date}] 상세 내역`;
-            const tbody = document.getElementById('modal-tbody');
-            
-            // 필터링: 작성일자가 일치하는 모든 데이터
-            const filtered = allData.filter(d => d.작성일자 === date);
-            
-            tbody.innerHTML = filtered.map(item => {
-                return `
-                    <tr>
-                        <td style="white-space:nowrap;">${item.작성일자 || '-'}</td>
-                        <td style="color:#cbd5e1;">${item.작성자 || '-'}</td>
-                        <td style="font-family:monospace; font-size:0.8rem; color:#60a5fa;">${item.cat_no || '-'}</td>
-                        <td style="color:#cbd5e1;">${item.제조사 || '-'}</td>
-                        <td class="highlight">${item.구매처 || '-'}</td>
-                        <td style="color:#cbd5e1;">${item.규격 || '-'}</td>
-                        <td style="text-align:center; color:#94a3b8;">${item.단위 || '-'}</td>
-                        <td style="text-align:right; font-weight:600;">${(item.수량 || 0).toLocaleString()}</td>
-                        <td style="text-align:right; color:#94a3b8;">₩${(item.단가 || 0).toLocaleString()}</td>
-                        <td style="text-align:right; font-weight:700; color:var(--primary);">₩${(item.금액 || 0).toLocaleString()}</td>
-                        <td style="color:#cbd5e1;">${item.담당자 || '-'}</td>
-                        <td style="font-family:monospace; font-size:0.8rem;">${item.연락처 || '-'}</td>
-                        <td style="font-family:monospace; font-size:0.8rem; color:#94a3b8;">${item.email || '-'}</td>
-                    </tr>
+                
+                tr.innerHTML = `
+                    <td class="py-4 px-6 text-xs text-slate-500 font-medium whitespace-nowrap">${item.작성일자}</td>
+                    <td class="py-4 px-6 font-bold text-slate-600 whitespace-nowrap">${item.구매처}</td>
+                    <td class="py-4 px-6 font-bold text-slate-800 whitespace-nowrap">${item.품명1}</td>
+                    <td class="py-4 px-6 text-right whitespace-nowrap font-medium text-slate-700">${(item.실입고량 || 0).toLocaleString()}</td>
+                    <td class="py-4 px-6 text-right whitespace-nowrap font-bold text-primary">₩${(item.실단가 || 0).toLocaleString()}</td>
+                    <td class="py-4 px-6 whitespace-nowrap">${diffHtml}</td>
+                    <td class="py-4 px-6 text-right whitespace-nowrap font-black text-primary">₩${(item.금액 || 0).toLocaleString()}</td>
                 `;
-            }).join('');
+            } else {
+                const badgeClass = item.구분 === '밸리데이션' ? 'bg-primary/10 text-primary' : 'bg-green-100 text-green-700';
+                const badgeHtml = `<span class="${badgeClass} px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest">${item.구분}</span>`;
+                const dateLink = `<span class="doc-link shadow-sm" onclick="openDateModal('${item.작성일자}')">${item.작성일자}</span>`;
+                
+                tr.innerHTML = `
+                    <td class="py-4 px-6 whitespace-nowrap">${dateLink}</td>
+                    <td class="py-4 px-6 whitespace-nowrap text-center">${badgeHtml}</td>
+                    <td class="py-4 px-6 text-xs text-slate-500 font-medium whitespace-nowrap">${item.문서번호 || '-'}</td>
+                    <td class="py-4 px-6 font-bold text-slate-800 whitespace-nowrap">${item.품명1}</td>
+                    <td class="py-4 px-6 font-bold text-slate-600 whitespace-nowrap">${item.구매처}</td>
+                    <td class="py-4 px-6 text-right whitespace-nowrap font-medium text-slate-700">${(item.수량 || 0).toLocaleString()}</td>
+                    <td class="py-4 px-6 text-right whitespace-nowrap font-black text-primary">₩${(item.금액 || 0).toLocaleString()}</td>
+                `;
+            }
+            tbody.appendChild(tr);
+        });
+    }
 
-            modal.style.display = 'flex';
-            requestAnimationFrame(() => modal.classList.add('show'));
+    function updateSummary(data) {
+        const count = data.length;
+        const total = data.reduce((sum, d) => sum + (d.금액 || 0), 0);
+        const vendors = [...new Set(data.map(d => d.구매처).filter(Boolean))].sort();
+        
+        let avgPrice = 0;
+        if (count > 0) {
+            const priceSum = data.reduce((sum, d) => sum + (d.실단가 || 0), 0);
+            avgPrice = Math.round(priceSum / count);
         }
 
-        function closeDocModal() {
-            const modal = document.getElementById('doc-modal');
-            modal.classList.remove('show');
-            setTimeout(() => { modal.style.display = 'none'; }, 200);
-        }
-    </script>
+        document.getElementById('sum-count').innerText = count.toLocaleString() + '건';
+        document.getElementById('sum-total').innerText = '₩' + total.toLocaleString();
+        document.getElementById('sum-avg').innerText = '₩' + avgPrice.toLocaleString();
+        document.getElementById('sum-vendors').innerText = vendors.length > 0 ? vendors.join(', ') : '-';
+    }
 
-    <!-- Document Detail Modal -->
-    <div id="doc-modal" class="modal-overlay" onclick="if(event.target===this) closeDocModal()">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fa-solid fa-file-invoice"></i> <span id="modal-doc-title">문서 상세 내역</span></h3>
-                <button class="modal-close" onclick="closeDocModal()"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="modal-body">
-                <table class="modal-table">
-                    <thead>
-                        <tr>
-                            <th>작성일자</th>
-                            <th>작성자</th>
-                            <th>Cat.No</th>
-                            <th>제조사</th>
-                            <th>구매처</th>
-                            <th>규격</th>
-                            <th style="text-align:center;">단위</th>
-                            <th style="text-align:right;">수량</th>
-                            <th style="text-align:right;">단가</th>
-                            <th style="text-align:right;">금액</th>
-                            <th>담당자</th>
-                            <th>연락처</th>
-                            <th>E-mail</th>
-                        </tr>
-                    </thead>
-                    <tbody id="modal-tbody"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
+    init();
+
+    // ── Modal Functions ──
+    function openDateModal(date) {
+        const modal = document.getElementById('doc-modal');
+        const content = document.getElementById('doc-modal-content');
+        
+        document.getElementById('modal-doc-title').innerText = `[${date}] 상세 내역`;
+        const tbody = document.getElementById('modal-tbody');
+        
+        // 필터링: 작성일자가 일치하는 모든 데이터
+        const filtered = allData.filter(d => d.작성일자 === date);
+        
+        tbody.innerHTML = filtered.map(item => {
+            return `
+                <tr class="hover:bg-slate-50 transition-colors bg-white">
+                    <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-500 font-medium">${item.작성일자 || '-'}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-500 font-medium">${item.작성자 || '-'}</td>
+                    <td class="py-4 px-4 whitespace-nowrap font-mono text-xs font-bold text-primary">${item.cat_no || '-'}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-600">${item.제조사 || '-'}</td>
+                    <td class="py-4 px-4 whitespace-nowrap font-bold text-slate-800">${item.구매처 || '-'}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-600">${item.규격 || '-'}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-center text-xs text-slate-400 font-bold uppercase">${item.단위 || '-'}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-right font-bold text-slate-700">${(item.수량 || 0).toLocaleString()}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-right font-bold text-slate-600">₩${(item.단가 || 0).toLocaleString()}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-right font-black text-primary">₩${(item.금액 || 0).toLocaleString()}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-500 font-medium">${item.담당자 || '-'}</td>
+                    <td class="py-4 px-4 whitespace-nowrap font-mono text-xs text-slate-600">${item.연락처 || '-'}</td>
+                    <td class="py-4 px-4 whitespace-nowrap font-mono text-xs text-slate-500">${item.email || '-'}</td>
+                </tr>
+            `;
+        }).join('');
+
+        modal.style.display = 'flex';
+        modal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            modal.classList.add('opacity-100');
+            content.classList.add('translate-y-0');
+        });
+    }
+
+    function closeDocModal() {
+        const modal = document.getElementById('doc-modal');
+        const content = document.getElementById('doc-modal-content');
+        
+        modal.classList.remove('opacity-100');
+        content.classList.remove('translate-y-0');
+        setTimeout(() => { 
+            modal.style.display = 'none'; 
+            modal.classList.add('hidden');
+        }, 200);
+    }
+</script>
+{% endblock %}

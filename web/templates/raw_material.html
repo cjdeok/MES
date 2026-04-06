@@ -1,479 +1,266 @@
-<!DOCTYPE html>
-<html lang="ko">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MES 통합 관리 시스템 - 원재료관리</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body {
-            margin: 0;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            min-height: 100vh;
-            color: #fff;
-            font-family: 'Inter', sans-serif;
-        }
+{% set active_nav = 'raw_material' %}
 
+{% block title %}MES 통합 관리 시스템 - 원재료 관리 | Kinetic MES{% endblock %}
 
-        /* ─── Main Content ─── */
-        .main-content {
-            padding: 2rem 2.5rem;
-            padding-top: calc(52px + 2rem);
-            min-height: 100vh;
-            box-sizing: border-box;
-            display: flex; flex-direction: column;
-        }
-
-        .page-title { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.4rem; }
-        .page-subtitle { color: #94a3b8; font-size: 0.95rem; margin-bottom: 2rem; }
-
-        /* ─── Filter Area ─── */
-        .dashboard-container {
-            display: flex; gap: 1.5rem; margin-bottom: 2rem;
-            flex-wrap: wrap;
-        }
-        .filter-panel {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px; padding: 1.2rem 1.5rem;
-            display: flex; align-items: center; gap: 1.5rem;
-            flex: 1; min-width: 300px;
-        }
-        .filter-label { font-size: 0.9rem; font-weight: 600; color: #94a3b8; display: flex; align-items: center; gap: 0.5rem; }
-        .filter-label i { color: #3b82f6; }
-        
-        .filter-btn-group { display: flex; gap: 0.5rem; }
-        .filter-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #94a3b8; padding: 0.5rem 1rem;
-            border-radius: 8px; font-size: 0.85rem; cursor: pointer;
-            transition: all 0.2s;
-        }
-        .filter-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
-        .filter-btn.active {
-            background: #3b82f6; color: white; border-color: #3b82f6;
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
-        }
-
-        /* ─── Table Panel ─── */
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            display: flex; flex-direction: column;
-            flex: 1;
-        }
-
-        .panel-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 1.2rem;
-        }
-        
-        .panel-header h2 {
-            font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 0.6rem; margin: 0;
-        }
-        
-        .panel-header h2 i { color: #3b82f6; }
-
-        .refresh-btn {
-            background: rgba(255, 255, 255, 0.07);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #94a3b8; padding: 0.4rem 0.9rem;
-            border-radius: 8px; font-size: 0.85rem; cursor: pointer;
-            transition: all 0.2s; display: flex; align-items: center; gap: 0.4rem;
-        }
-        
-        .refresh-btn:hover { background: rgba(59, 130, 246, 0.15); color: white; }
-
-        .table-container {
-            overflow-x: auto;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            background: rgba(15, 23, 42, 0.4);
-            flex: 1;
-        }
-
-        table {
-            width: 100%; border-collapse: collapse; min-width: 1000px;
-        }
-
-        th, td {
-            padding: 1rem 1.2rem;
-            text-align: left;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        th {
-            background: rgba(255, 255, 255, 0.02);
-            font-size: 0.82rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;
-            position: sticky; top: 0; backdrop-filter: blur(10px);
-        }
-
-        tr:hover td { background: rgba(255, 255, 255, 0.03); }
-
-        .td-code { font-family: monospace; color: #60a5fa; font-weight: 600; font-size: 0.85rem;}
-        .td-name { font-weight: 500; font-size: 0.9rem; }
-        .td-lot { font-family: monospace; background: rgba(255,255,255,0.08); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem;}
-        .td-number { font-weight: 600; font-size: 0.95rem; text-align: right; }
-        
-        .stock-pos { color: #10b981; }
-        .stock-zero { color: #64748b; }
-        .stock-neg { color: #ef4444; }
-
-        .expiry-urgent { color: #f43f5e; font-weight: 600; }
-        .expiry-warning { color: #f59e0b; font-weight: 600; }
-        .expiry-safe { color: #10b981; }
-
-        .unit-label { font-size: 0.75rem; color: #94a3b8; font-weight: 400; margin-left: 2px; }
-
-        #loading {
-            text-align: center; padding: 3rem; color: #94a3b8; font-size: 1rem;
-        }
-
-        /* ─── Modal ─── */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-            display: none; justify-content: center; align-items: center;
-            z-index: 1000;
-            opacity: 0; transition: opacity 0.2s;
-        }
-        .modal-overlay.show { display: flex; opacity: 1; }
-        .modal-content {
-            background: #1e293b;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            width: 90%; max-width: 800px; max-height: 85vh;
-            display: flex; flex-direction: column;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-            transform: translateY(20px); transition: transform 0.2s;
-        }
-        .modal-overlay.show .modal-content { transform: translateY(0); }
-        .modal-header {
-            padding: 1.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex; justify-content: space-between; align-items: center;
-            background: rgba(15, 23, 42, 0.4); border-radius: 12px 12px 0 0;
-        }
-        .modal-header h3 { margin: 0; font-size: 1.1rem; color: #fff; display: flex; align-items: center; gap: 0.6rem; }
-        .modal-header h3 i { color: #3b82f6; }
-        .modal-close {
-            background: transparent; border: none; color: #94a3b8;
-            font-size: 1.25rem; cursor: pointer; transition: color 0.2s;
-        }
-        .modal-close:hover { color: #fff; }
-        .modal-body {
-            padding: 1.5rem; overflow-y: auto; flex: 1;
-        }
-        .modal-table { width: 100%; border-collapse: collapse; }
-        .modal-table th, .modal-table td {
-            padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            font-size: 0.85rem;
-        }
-        .modal-table th { color: #94a3b8; font-weight: 600; background: rgba(255, 255, 255, 0.02); position: sticky; top: 0; }
-        .type-in { color: #10b981; font-weight: 600; }
-        .type-out { color: #f43f5e; font-weight: 600; }
-        
-        .clickable-row { cursor: pointer; transition: background 0.15s; }
-        .clickable-row:hover td { background: rgba(59, 130, 246, 0.1); }
-
-    </style>
-</head>
-
-<body>
-    <header class="top-header">
-        <a href="/" class="header-brand">
-            <img src="/static/img/logo.png" alt="Logo" class="brand-logo">
-            <span>생산관리팀 통합 관리</span>
-        </a>
-        <nav class="header-nav">
-            <a href="/" class="nav-btn">
-                <i class="fa-solid fa-house"></i>
-                재고현황
-            </a>
-            <a href="/material-info" class="nav-btn">
-                <i class="fa-solid fa-list-ul"></i>
-                안전재고
-            </a>
-            <a href="/purchase-dashboard" class="nav-btn">
-                <i class="fa-solid fa-chart-line"></i>
-                구매 대시보드
-            </a>
-            <a href="/facilities" class="nav-btn">
-                <i class="fa-solid fa-tools"></i>
-                설비 관리
-            </a>
-            <a href="/inventory" class="nav-btn">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                원료상세검색
-            </a>
-            <a href="/raw-material" class="nav-btn active">
-                <i class="fa-solid fa-flask"></i>
-                원재료관리
-            </a>
-            <a href="/producible" class="nav-btn">
-                <i class="fa-solid fa-flask-vial"></i>
-                생산가능수량
-            </a>
-                        <div class="nav-dropdown">
-                <a href="/production" class="nav-btn">
-                    <i class="fa-solid fa-industry"></i>
-                    생산 관리 <i class="fa-solid fa-chevron-down" style="font-size: 0.7rem; margin-left: 5px;"></i>
-                </a>
-                <div class="dropdown-content">
-                    <a href="/production"><i class="fa-solid fa-calculator"></i>생산 지시</a>
-                    <a href="/mo-management"><i class="fa-solid fa-file-contract"></i>MO 생성</a>
-                    <a href="/bom-calculator"><i class="fa-solid fa-sitemap"></i>BOM 계산기</a>
-                </div>
-            </div>
-            <a href="/finished-product" class="nav-btn">
-                <i class="fa-solid fa-box"></i>
-                완제품관리
-            </a>
-            <a href="/validation" class="nav-btn">
-                <i class="fa-solid fa-clipboard-check"></i>
-                밸리데이션
-            </a>
-            <a href="/calibration" class="nav-btn">
-                <i class="fa-solid fa-compass-drafting"></i>
-                검교정
-            </a>
-            <a href="/upload-usage" class="nav-btn">
-                <i class="fa-solid fa-file-arrow-up"></i>
-                사용량 업로드
-            </a>
-            <a href="/upload-receiving" class="nav-btn">
-                <i class="fa-solid fa-file-import"></i>
-                입고 업로드
-            </a>
-        </nav>
-    </header>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        <h1 class="page-title">
-            <i class="fa-solid fa-flask" style="color:#3b82f6; margin-right: 0.5rem;"></i>
+{% block content %}
+<!-- Page Header -->
+<div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div>
+        <h1 class="text-3xl font-bold text-on-surface tracking-tight flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary text-4xl">science</span>
             원재료 관리
         </h1>
-        <p class="page-subtitle">모든 원료의 Lot별 상세 내역을 파악하고 유효기간을 관리합니다.</p>
+        <p class="text-slate-500 font-medium text-sm mt-2">모든 원료의 Lot별 상세 내역을 파악하고 유효기간을 관리합니다.</p>
+    </div>
+</div>
 
-        <!-- Filter Area -->
-        <div class="dashboard-container">
-            <div class="filter-panel">
-                <div class="filter-label">
-                    <i class="fa-solid fa-hourglass-half"></i>
-                    유효기간 필터링
-                </div>
-                <div class="filter-btn-group" id="expiry-filter-group">
-                    <button class="filter-btn active" data-filter="all">전체</button>
-                    <button class="filter-btn" data-filter="3">3개월 이내</button>
-                    <button class="filter-btn" data-filter="6">6개월 이내</button>
-                    <button class="filter-btn" data-filter="12">12개월 이내</button>
-                </div>
-            </div>
-        </div>
+<!-- Filter Area -->
+<section class="bg-surface-container-lowest p-6 rounded-2xl cloud-shadow border border-white mb-8 flex flex-col md:flex-row md:items-center gap-6">
+    <div class="flex items-center gap-2 text-sm font-bold text-slate-500">
+        <span class="material-symbols-outlined text-primary">hourglass_bottom</span>
+        <span class="uppercase tracking-widest">유효기간 필터링</span>
+    </div>
+    <div class="flex flex-wrap gap-2" id="expiry-filter-group">
+        <button class="filter-btn bg-primary text-white border border-primary shadow-md px-4 py-2 rounded-lg text-sm font-bold transition-all active:scale-95" data-filter="all">전체</button>
+        <button class="filter-btn bg-surface border border-surface-variant text-slate-600 hover:bg-surface-container-highest px-4 py-2 rounded-lg text-sm font-bold transition-all active:scale-95" data-filter="3">3개월 이내</button>
+        <button class="filter-btn bg-surface border border-surface-variant text-slate-600 hover:bg-surface-container-highest px-4 py-2 rounded-lg text-sm font-bold transition-all active:scale-95" data-filter="6">6개월 이내</button>
+        <button class="filter-btn bg-surface border border-surface-variant text-slate-600 hover:bg-surface-container-highest px-4 py-2 rounded-lg text-sm font-bold transition-all active:scale-95" data-filter="12">12개월 이내</button>
+    </div>
+</section>
 
-        <div class="glass-panel">
-            <div class="panel-header">
-                <h2><i class="fa-solid fa-table-list"></i> 원료 Lot별 재고 상세내역</h2>
-                <div style="display: flex; gap: 0.8rem;">
-                    <button class="refresh-btn" id="refresh-btn" onclick="fetchInventory()">
-                        <i class="fa-solid fa-rotate-right"></i> 새로고침
-                    </button>
-                </div>
-            </div>
-
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>원료코드</th>
-                            <th>원료명</th>
-                            <th>Lot No.</th>
-                            <th>Cat No.</th>
-                            <th>입고일자</th>
-                            <th>유효기간</th>
-                            <th style="text-align: right;">현재 재고</th>
-                            <th>제조사/공급사</th>
-                        </tr>
-                    </thead>
-                    <tbody id="inventory-tbody">
-                        <tr><td colspan="8" id="loading"><i class="fa-solid fa-circle-notch fa-spin"></i> 데이터를 불러오는 중입니다...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<!-- Table Panel -->
+<section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white flex flex-col min-h-[500px]">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">table_chart</span> 원료 Lot별 재고 상세내역
+        </h2>
+        <button id="refresh-btn" onclick="fetchInventory()" class="bg-surface-container-low hover:bg-surface-container-highest text-slate-700 px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2 text-sm shadow-sm active:scale-95">
+            새로고침 <span class="material-symbols-outlined text-[16px]">refresh</span>
+        </button>
     </div>
 
-    <script>
-        let rawInventoryData = [];
-        let currentFilter = 'all';
+    <div class="overflow-x-auto border border-surface-variant rounded-xl hide-scrollbar flex-1">
+        <table class="w-full text-left border-collapse">
+            <thead class="bg-surface-container-low sticky top-0 z-10">
+                <tr class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-surface-variant">
+                    <th class="py-3 px-6 whitespace-nowrap">원료코드</th>
+                    <th class="py-3 px-6">원료명</th>
+                    <th class="py-3 px-6">Lot No.</th>
+                    <th class="py-3 px-6">Cat No.</th>
+                    <th class="py-3 px-6">입고일자</th>
+                    <th class="py-3 px-6">유효기간</th>
+                    <th class="py-3 px-6 text-right">현재 재고</th>
+                    <th class="py-3 px-6">제조사/공급사</th>
+                </tr>
+            </thead>
+            <tbody id="inventory-tbody" class="text-sm divide-y divide-surface-container-low bg-white">
+                <tr><td colspan="8" class="text-center py-12 text-slate-400 font-medium"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 데이터를 불러오는 중입니다...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
 
-        async function fetchInventory() {
-            const tbody = document.getElementById('inventory-tbody');
-            tbody.innerHTML = '<tr><td colspan="8" id="loading"><i class="fa-solid fa-circle-notch fa-spin"></i> 데이터를 불러오는 중입니다...</td></tr>';
+<!-- Modal HTML -->
+<div id="lot-modal" class="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center opacity-0 transition-opacity duration-200" onclick="if(event.target===this) closeLotModal()">
+    <div class="bg-white rounded-2xl w-11/12 max-w-4xl max-h-[85vh] flex flex-col cloud-shadow transform translate-y-4 transition-transform duration-200" id="lot-modal-content">
+        <div class="px-6 py-5 border-b border-surface-variant flex justify-between items-center bg-surface-container-low rounded-t-2xl">
+            <h3 class="font-bold text-lg text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">history</span> 
+                <span id="modal-lot-title">Lot 상세 내역</span>
+            </h3>
+            <button class="text-slate-400 hover:text-slate-700 transition-colors" onclick="closeLotModal()">
+                <span class="material-symbols-outlined text-2xl">close</span>
+            </button>
+        </div>
+        <div class="p-6 overflow-y-auto hide-scrollbar flex-1 bg-white rounded-b-2xl">
+            <table class="w-full text-left border-collapse">
+                <thead class="sticky top-0 bg-white z-10">
+                    <tr class="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-surface-variant">
+                        <th class="pb-3 px-4 whitespace-nowrap">구분</th>
+                        <th class="pb-3 px-4">날짜</th>
+                        <th class="pb-3 px-4 text-right">수량</th>
+                        <th class="pb-3 px-4">비고(사용처)</th>
+                        <th class="pb-3 px-4">메모</th>
+                    </tr>
+                </thead>
+                <tbody id="modal-tbody" class="text-sm divide-y divide-surface-container-low">
+                    <!-- 동적 삽입 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let rawInventoryData = [];
+    let currentFilter = 'all';
+
+    async function fetchInventory() {
+        const tbody = document.getElementById('inventory-tbody');
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-12 text-slate-400"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 데이터를 불러오는 중입니다...</td></tr>';
+        
+        try {
+            const response = await fetch('/api/raw-material/inventory');
+            const result = await response.json();
             
-            try {
-                const response = await fetch('/api/raw-material/inventory');
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    rawInventoryData = result.data;
-                    renderTable();
-                } else {
-                    throw new Error(result.message);
-                }
-            } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem; color: #ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> 에러 발생: ${err.message}</td></tr>`;
-            }
-        }
-
-        function renderTable() {
-            const tbody = document.getElementById('inventory-tbody');
-            tbody.innerHTML = '';
-            
-            const now = new Date();
-            
-            const filteredData = rawInventoryData.filter(item => {
-                if (currentFilter === 'all') return true;
-                
-                if (!item.expire_date) return false;
-                
-                const expireDate = new Date(item.expire_date);
-                const diffTime = expireDate - now;
-                const diffMonths = diffTime / (1000 * 60 * 60 * 24 * 30.44);
-                
-                return diffMonths >= 0 && diffMonths <= parseInt(currentFilter);
-            });
-
-            if (filteredData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem; color: #94a3b8;">데이터가 없습니다.</td></tr>';
-                return;
-            }
-
-            filteredData.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.className = 'clickable-row';
-                tr.onclick = () => openLotModal(item.item_code, item.lot_no, item.product_name);
-                
-                const stockClass = item.current_stock > 0 ? 'stock-pos' : (item.current_stock < 0 ? 'stock-neg' : 'stock-zero');
-                
-                // 유효기간 강조 로직
-                let expiryClass = '';
-                if (item.expire_date) {
-                    const exp = new Date(item.expire_date);
-                    const monthsLeft = (exp - now) / (1000 * 60 * 60 * 24 * 30.44);
-                    if (monthsLeft < 0) expiryClass = 'stock-neg';
-                    else if (monthsLeft < 3) expiryClass = 'expiry-urgent';
-                    else if (monthsLeft < 6) expiryClass = 'expiry-warning';
-                    else expiryClass = 'expiry-safe';
-                }
-
-                tr.innerHTML = `
-                    <td class="td-code">${item.item_code || '-'}</td>
-                    <td class="td-name">${item.product_name || '-'}</td>
-                    <td><span class="td-lot">${item.lot_no || '-'}</span></td>
-                    <td style="font-size:0.8rem; color:#94a3b8;">${item.cat_no || '-'}</td>
-                    <td style="color: #cbd5e1;">${item.receive_date || '-'}</td>
-                    <td class="${expiryClass}">${item.expire_date || '-'}</td>
-                    <td class="td-number ${stockClass}">${item.current_stock.toLocaleString()}</td>
-                    <td style="font-size:0.8rem; color:#94a3b8;">${item.manufacturer || '-'}<br>${item.vendor || '-'}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        // 필터 버튼 이벤트 바인딩
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentFilter = btn.getAttribute('data-filter');
+            if (result.status === 'success') {
+                rawInventoryData = result.data;
                 renderTable();
-            });
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (err) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-12 text-error font-medium"><span class="material-symbols-outlined align-middle mr-2">error</span> 에러 발생: ${err.message}</td></tr>`;
+        }
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('inventory-tbody');
+        tbody.innerHTML = '';
+        
+        const now = new Date();
+        
+        const filteredData = rawInventoryData.filter(item => {
+            if (currentFilter === 'all') return true;
+            if (!item.expire_date) return false;
+            
+            const expireDate = new Date(item.expire_date);
+            const diffTime = expireDate - now;
+            const diffMonths = diffTime / (1000 * 60 * 60 * 24 * 30.44);
+            
+            return diffMonths >= 0 && diffMonths <= parseInt(currentFilter);
         });
 
-        async function openLotModal(itemCode, lotNo, productName) {
-            const modal = document.getElementById('lot-modal');
-            document.getElementById('modal-lot-title').innerText = `[${lotNo}] ${productName} - 입출고 상세 내역`;
-            const tbody = document.getElementById('modal-tbody');
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2rem; color: #94a3b8;"><i class="fa-solid fa-circle-notch fa-spin"></i> 로딩 중...</td></tr>';
+        if (filteredData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-12 text-slate-400 font-medium">데이터가 없습니다.</td></tr>';
+            return;
+        }
+
+        filteredData.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-surface-container-low/50 transition-colors cursor-pointer group';
+            tr.onclick = () => openLotModal(item.item_code, item.lot_no, item.product_name);
             
-            modal.style.display = 'flex';
-            requestAnimationFrame(() => modal.classList.add('show'));
-
-            try {
-                // 기존 /api/inventory?item_code=...&lot_no=... 엔드포인트 활용
-                const res = await fetch(`/api/inventory?item_code=${encodeURIComponent(itemCode)}&lot_no=${encodeURIComponent(lotNo)}`);
-                const result = await res.json();
-
-                if (result.status === 'success') {
-                    tbody.innerHTML = '';
-                    if (!result.history || result.history.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2rem; color: #94a3b8;">상세 내역이 없습니다.</td></tr>';
-                        return;
-                    }
-
-                    result.history.forEach(item => {
-                        const tr = document.createElement('tr');
-                        const isOut = item.transaction_type === '출고';
-                        const typeClass = isOut ? 'type-out' : 'type-in';
-                        
-                        tr.innerHTML = `
-                            <td class="${typeClass}">${item.transaction_type}</td>
-                            <td style="color:#cbd5e1;">${item.transaction_date || '-'}</td>
-                            <td style="text-align:right; font-weight:600;">${(item.quantity || 0).toLocaleString()}</td>
-                            <td>${item.purpose || '-'}</td>
-                            <td style="color:#94a3b8;">${item.remark || '-'}</td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-                } else {
-                    throw new Error(result.message);
+            let stockClass = 'text-slate-500';
+            if (item.current_stock > 0) stockClass = 'text-green-600 font-bold';
+            else if (item.current_stock < 0) stockClass = 'text-error font-bold';
+            else stockClass = 'text-slate-400';
+            
+            let expiryClass = 'text-slate-500';
+            let expiryBg = '';
+            
+            if (item.expire_date) {
+                const exp = new Date(item.expire_date);
+                const monthsLeft = (exp - now) / (1000 * 60 * 60 * 24 * 30.44);
+                if (monthsLeft < 0) {
+                    expiryClass = 'text-on-error-container';
+                    expiryBg = 'bg-error-container font-bold px-2 py-0.5 rounded';
                 }
-            } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 2rem; color: #ef4444;">에러 발생: ${err.message}</td></tr>`;
+                else if (monthsLeft < 3) {
+                    expiryClass = 'text-error';
+                    expiryBg = 'font-bold';
+                }
+                else if (monthsLeft < 6) {
+                    expiryClass = 'text-amber-500';
+                    expiryBg = 'font-bold';
+                }
+                else {
+                    expiryClass = 'text-green-600';
+                }
             }
+
+            tr.innerHTML = `
+                <td class="py-4 px-6 font-mono font-bold text-primary text-xs whitespace-nowrap">${item.item_code || '-'}</td>
+                <td class="py-4 px-6 font-bold text-slate-700 whitespace-nowrap">${item.product_name || '-'}</td>
+                <td class="py-4 px-6 whitespace-nowrap"><span class="bg-surface-container-highest px-2 py-1 rounded text-[10px] font-bold text-slate-600 tracking-wider">${item.lot_no || '-'}</span></td>
+                <td class="py-4 px-6 text-[10px] text-slate-400 font-medium whitespace-nowrap">${item.cat_no || '-'}</td>
+                <td class="py-4 px-6 text-xs text-slate-500 whitespace-nowrap">${item.receive_date || '-'}</td>
+                <td class="py-4 px-6 text-xs whitespace-nowrap"><span class="${expiryClass} ${expiryBg}">${item.expire_date || '-'}</span></td>
+                <td class="py-4 px-6 text-right whitespace-nowrap text-lg ${stockClass}">${item.current_stock.toLocaleString()}</td>
+                <td class="py-4 px-6 text-[10px] text-slate-500 leading-tight">${item.manufacturer || '-'}<br>${item.vendor || '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // 필터 버튼 이벤트 바인딩
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.className = 'filter-btn bg-surface border border-surface-variant text-slate-600 hover:bg-surface-container-highest px-4 py-2 rounded-lg text-sm font-bold transition-all active:scale-95';
+            });
+            btn.className = 'filter-btn bg-primary text-white border border-primary shadow-md px-4 py-2 rounded-lg text-sm font-bold transition-all active:scale-95';
+            currentFilter = btn.getAttribute('data-filter');
+            renderTable();
+        });
+    });
+
+    async function openLotModal(itemCode, lotNo, productName) {
+        const modal = document.getElementById('lot-modal');
+        const content = document.getElementById('lot-modal-content');
+        
+        document.getElementById('modal-lot-title').innerText = `[${lotNo}] ${productName} - 입출고 상세 내역`;
+        const tbody = document.getElementById('modal-tbody');
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-12 text-slate-400"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 로딩 중...</td></tr>';
+        
+        modal.style.display = 'flex';
+        modal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            modal.classList.add('opacity-100');
+            content.classList.add('translate-y-0');
+        });
+
+        try {
+            const res = await fetch(`/api/inventory?item_code=${encodeURIComponent(itemCode)}&lot_no=${encodeURIComponent(lotNo)}`);
+            const result = await res.json();
+
+            if (result.status === 'success') {
+                tbody.innerHTML = '';
+                if (!result.history || result.history.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-12 text-slate-400 font-medium">상세 내역이 없습니다.</td></tr>';
+                    return;
+                }
+
+                result.history.forEach(item => {
+                    const tr = document.createElement('tr');
+                    const isOut = item.transaction_type === '출고';
+                    const badgeClass = isOut ? 'bg-error-container text-on-error-container' : 'bg-green-100 text-green-800';
+                    const icon = isOut ? 'arrow_outward' : 'south_west';
+                    
+                    tr.className = "hover:bg-slate-50 transition-colors bg-white";
+                    tr.innerHTML = `
+                        <td class="py-4 px-4 whitespace-nowrap"><span class="px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 w-fit uppercase ${badgeClass}"><span class="material-symbols-outlined text-[14px]">${icon}</span> ${item.transaction_type}</span></td>
+                        <td class="py-4 px-4 whitespace-nowrap text-xs font-medium text-slate-500">${item.transaction_date || '-'}</td>
+                        <td class="py-4 px-4 whitespace-nowrap text-right text-lg font-bold text-on-surface">${(item.quantity || 0).toLocaleString()}</td>
+                        <td class="py-4 px-4 font-medium text-slate-700">${item.purpose || '-'}</td>
+                        <td class="py-4 px-4 text-xs text-slate-400">${item.remark || '-'}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (err) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-12 text-error font-medium">에러 발생: ${err.message}</td></tr>`;
         }
+    }
 
-        function closeLotModal() {
-            const modal = document.getElementById('lot-modal');
-            modal.classList.remove('show');
-            setTimeout(() => { modal.style.display = 'none'; }, 200);
-        }
+    function closeLotModal() {
+        const modal = document.getElementById('lot-modal');
+        const content = document.getElementById('lot-modal-content');
+        
+        modal.classList.remove('opacity-100');
+        content.classList.remove('translate-y-0');
+        setTimeout(() => { 
+            modal.style.display = 'none'; 
+            modal.classList.add('hidden');
+        }, 200);
+    }
 
-        document.addEventListener('DOMContentLoaded', fetchInventory);
-    </script>
-
-    <!-- Modal HTML -->
-    <div id="lot-modal" class="modal-overlay" onclick="if(event.target===this) closeLotModal()">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fa-solid fa-clock-rotate-left"></i> <span id="modal-lot-title">Lot 상세 내역</span></h3>
-                <button class="modal-close" onclick="closeLotModal()"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="modal-body">
-                <table class="modal-table">
-                    <thead>
-                        <tr>
-                            <th>구분</th>
-                            <th>날짜</th>
-                            <th style="text-align:right;">수량</th>
-                            <th>비고(사용처)</th>
-                            <th>메모</th>
-                        </tr>
-                    </thead>
-                    <tbody id="modal-tbody"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</body>
-
-</html>
+    document.addEventListener('DOMContentLoaded', fetchInventory);
+</script>
+{% endblock %}
