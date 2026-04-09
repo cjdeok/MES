@@ -5,6 +5,7 @@
 {% block title %}MES 안전재고(100,000 tests) | Kinetic MES{% endblock %}
 
 {% block content %}
+<div id="vue-app">
 <!-- Page Header -->
 <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
@@ -19,40 +20,20 @@
 <!-- Stat Cards -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <div class="bg-surface-container-lowest border-l-4 border-primary border-y border-r border-white rounded-xl p-5 cloud-shadow flex items-center gap-4 transition-transform hover:-translate-y-1 duration-200">
-        <div class="w-12 h-12 rounded-lg bg-primary-fixed text-primary flex items-center justify-center">
-            <span class="material-symbols-outlined">inventory_2</span>
-        </div>
-        <div>
-            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">등록 원료 수</h4>
-            <span class="text-2xl font-black text-slate-800" id="stat-total">-</span>
-        </div>
+        <div class="w-12 h-12 rounded-lg bg-primary-fixed text-primary flex items-center justify-center"><span class="material-symbols-outlined">inventory_2</span></div>
+        <div><h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">등록 원료 수</h4><span class="text-2xl font-black text-slate-800">${ stats.total }</span></div>
     </div>
     <div class="bg-surface-container-lowest border-l-4 border-green-500 border-y border-r border-white rounded-xl p-5 cloud-shadow flex items-center gap-4 transition-transform hover:-translate-y-1 duration-200">
-        <div class="w-12 h-12 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
-            <span class="material-symbols-outlined">check_circle</span>
-        </div>
-        <div>
-            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">안전재고 충족</h4>
-            <span class="text-2xl font-black text-slate-800" id="stat-ok">-</span>
-        </div>
+        <div class="w-12 h-12 rounded-lg bg-green-50 text-green-600 flex items-center justify-center"><span class="material-symbols-outlined">check_circle</span></div>
+        <div><h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">안전재고 충족</h4><span class="text-2xl font-black text-slate-800">${ stats.ok }</span></div>
     </div>
     <div class="bg-surface-container-lowest border-l-4 border-amber-500 border-y border-r border-white rounded-xl p-5 cloud-shadow flex items-center gap-4 transition-transform hover:-translate-y-1 duration-200">
-        <div class="w-12 h-12 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center">
-            <span class="material-symbols-outlined">warning</span>
-        </div>
-        <div>
-            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">안전재고 미달</h4>
-            <span class="text-2xl font-black text-slate-800" id="stat-warn">-</span>
-        </div>
+        <div class="w-12 h-12 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center"><span class="material-symbols-outlined">warning</span></div>
+        <div><h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">안전재고 미달</h4><span class="text-2xl font-black text-slate-800">${ stats.warn }</span></div>
     </div>
     <div class="bg-surface-container-lowest border-l-4 border-error border-y border-r border-white rounded-xl p-5 cloud-shadow flex items-center gap-4 transition-transform hover:-translate-y-1 duration-200">
-        <div class="w-12 h-12 rounded-lg bg-error-container text-on-error-container flex items-center justify-center">
-            <span class="material-symbols-outlined">cancel</span>
-        </div>
-        <div>
-            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">재고 없음</h4>
-            <span class="text-2xl font-black text-error" id="stat-zero">-</span>
-        </div>
+        <div class="w-12 h-12 rounded-lg bg-error-container text-on-error-container flex items-center justify-center"><span class="material-symbols-outlined">cancel</span></div>
+        <div><h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">재고 없음</h4><span class="text-2xl font-black text-error">${ stats.zero }</span></div>
     </div>
 </div>
 
@@ -60,21 +41,18 @@
 <section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white flex flex-col flex-1 min-h-[500px]">
     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4 border-b border-surface-container-high pb-4">
         <h2 class="text-xl font-bold text-on-surface flex items-center gap-2 whitespace-nowrap">
-            <span class="material-symbols-outlined text-primary">database</span> 원료 마스터 & 안전재고
+            <span class="material-symbols-outlined text-primary">database</span> 원료 마스터 &amp; 안전재고
         </h2>
-        
         <div class="flex flex-wrap items-center gap-4 w-full lg:w-auto">
             <div class="relative flex-1 lg:w-64">
                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-                <input type="text" id="search-input" placeholder="원료 코드 또는 이름 검색..." autocomplete="off" 
+                <input type="text" v-model="searchQuery" placeholder="원료 코드 또는 이름 검색..." autocomplete="off" 
                        class="w-full bg-surface-container-low border border-transparent focus:border-primary focus:bg-white rounded-lg pl-10 pr-4 py-2 text-sm text-slate-700 transition-all outline-none">
             </div>
-            
             <div class="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg">
-                <button class="group-filter-btn px-4 py-1.5 rounded-md text-sm font-bold bg-white shadow-sm text-primary transition-all" data-group="ALL">전체</button>
-                <button class="group-filter-btn px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all" data-group="B">BCM</button>
-                <button class="group-filter-btn px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all" data-group="C">CMA</button>
-                <button class="group-filter-btn px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all" data-group="E">EMA</button>
+                <button v-for="g in groupTabs" :key="g.value" @click="activeGroup = g.value"
+                        class="px-4 py-1.5 rounded-md text-sm font-bold transition-all"
+                        :class="activeGroup === g.value ? 'bg-white shadow-sm text-primary' : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'">${ g.label }</button>
             </div>
         </div>
     </div>
@@ -98,148 +76,133 @@
                     <th class="py-3 px-4 whitespace-nowrap">보관장소</th>
                 </tr>
             </thead>
-            <tbody id="info-tbody" class="text-sm divide-y divide-surface-container-low bg-white">
-                <tr><td colspan="12" class="text-center py-12 text-slate-400 font-medium"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 데이터를 불러오는 중입니다...</td></tr>
+            <tbody class="text-sm divide-y divide-surface-container-low bg-white">
+                <tr v-if="loading"><td colspan="12" class="text-center py-12 text-slate-400 font-medium"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 데이터를 불러오는 중입니다...</td></tr>
+                <tr v-else-if="filteredRows.length === 0"><td colspan="12" class="text-center py-12 text-slate-400 font-medium">검색 결과가 없습니다.</td></tr>
+                <tr v-else v-for="r in filteredRows" :key="r.item_code" class="transition-colors border-b border-surface-container-low" :class="getRowClass(r)">
+                    <td class="py-3 px-4 whitespace-nowrap"><span class="bg-surface-container-low text-primary px-2 py-1 rounded font-mono text-xs font-bold">${ r.item_code }</span></td>
+                    <td class="py-3 px-4 font-bold text-slate-700 min-w-[200px]">${ r.product_name || '-' }</td>
+                    <td class="py-3 px-4 text-xs text-slate-400 font-medium whitespace-nowrap">${ r.cat_no || '-' }</td>
+                    <td class="py-3 px-4 text-xs text-slate-600 whitespace-nowrap">${ r.manufacturer || '-' }</td>
+                    <td class="py-3 px-4 text-[10px] text-slate-400 uppercase whitespace-nowrap">${ r.package_unit || '-' }</td>
+                    <td class="py-3 px-4 text-[10px] text-slate-400 uppercase whitespace-nowrap">${ r.unit || '-' }</td>
+                    <td class="py-3 px-4 text-right font-medium text-slate-600 whitespace-nowrap">${ formatPrice(r.unit_price) }</td>
+                    <td class="py-3 px-4 text-right whitespace-nowrap"><span class="text-lg" :class="stockColorClass(r)">${ r.current_stock != null ? r.current_stock.toLocaleString() : '-' }</span> <span class="text-[10px] text-slate-400 ml-0.5">${ r.unit || '' }</span></td>
+                    <td class="py-3 px-4 text-right whitespace-nowrap" :class="safeClass(r)">${ r.safe_stock != null && r.safe_stock > 0 ? r.safe_stock.toLocaleString() : '-' }</td>
+                    <td class="py-3 px-4 text-center whitespace-nowrap" v-html="getBadgeHtml(r)"></td>
+                    <td class="py-3 px-4 text-center whitespace-nowrap" v-html="getTempHtml(r)"></td>
+                    <td class="py-3 px-4 text-[10px] text-slate-500 font-medium whitespace-nowrap">${ r.storage_location && r.storage_location !== '0' ? r.storage_location : '-' }</td>
+                </tr>
             </tbody>
         </table>
     </div>
 </section>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-    let allRows = [];
-    let activeGroup = 'ALL';
+const { createApp, ref, computed, onMounted } = Vue;
 
-    document.addEventListener('DOMContentLoaded', loadMaterialInfo);
+createApp({
+    delimiters: ['${', '}'],
+    setup() {
+        const allRows = ref([]);
+        const loading = ref(true);
+        const searchQuery = ref('');
+        const activeGroup = ref('ALL');
 
-    // 검색
-    document.getElementById('search-input').addEventListener('input', renderTable);
+        const groupTabs = [
+            { value: 'ALL', label: '전체' },
+            { value: 'B', label: 'BCM' },
+            { value: 'C', label: 'CMA' },
+            { value: 'E', label: 'EMA' }
+        ];
 
-    // 그룹 필터
-    document.querySelectorAll('.group-filter-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.group-filter-btn').forEach(b => {
-                b.className = 'group-filter-btn px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all';
+        const stats = computed(() => {
+            const rows = allRows.value;
+            let ok = 0, warn = 0, zero = 0;
+            rows.forEach(r => {
+                if (r.current_stock <= 0) zero++;
+                else if (r.safe_stock !== null && r.current_stock < r.safe_stock) warn++;
+                else ok++;
             });
-            btn.className = 'group-filter-btn px-4 py-1.5 rounded-md text-sm font-bold bg-white shadow-sm text-primary transition-all';
-            activeGroup = btn.dataset.group;
-            renderTable();
-        });
-    });
-
-    async function loadMaterialInfo() {
-        try {
-            const res = await fetch('/api/material-info');
-            const result = await res.json();
-
-            if (result.status === 'success') {
-                allRows = result.data;
-                updateStats(allRows);
-                renderTable();
-            }
-        } catch (e) {
-            document.getElementById('info-tbody').innerHTML =
-                '<tr><td colspan="12" class="text-center py-12 text-error font-medium"><span class="material-symbols-outlined align-middle mr-2">error</span> 데이터를 불러올 수 없습니다.</td></tr>';
-        }
-    }
-
-    function updateStats(rows) {
-        document.getElementById('stat-total').textContent = rows.length;
-
-        let okCount = 0, warnCount = 0, zeroCount = 0;
-        rows.forEach(r => {
-            if (r.current_stock <= 0) zeroCount++;
-            else if (r.safe_stock !== null && r.current_stock < r.safe_stock) warnCount++;
-            else okCount++;
+            return { total: rows.length, ok, warn, zero };
         });
 
-        document.getElementById('stat-ok').textContent = okCount;
-        document.getElementById('stat-warn').textContent = warnCount;
-        document.getElementById('stat-zero').textContent = zeroCount;
+        const filteredRows = computed(() => {
+            let filtered = allRows.value;
+            if (activeGroup.value !== 'ALL') {
+                filtered = filtered.filter(r => r.item_code.charAt(0).toUpperCase() === activeGroup.value);
+            }
+            const q = searchQuery.value.toLowerCase().trim();
+            if (q) {
+                filtered = filtered.filter(r =>
+                    r.item_code.toLowerCase().includes(q) ||
+                    (r.product_name || '').toLowerCase().includes(q) ||
+                    (r.cat_no || '').toLowerCase().includes(q) ||
+                    (r.manufacturer || '').toLowerCase().includes(q)
+                );
+            }
+            return filtered;
+        });
+
+        function formatPrice(v) {
+            return v ? '₩' + Number(v).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}) : '-';
+        }
+
+        function stockColorClass(r) {
+            const s = r.current_stock ?? 0;
+            if (s > 0) return 'text-green-600 font-bold';
+            if (s < 0) return 'text-error font-bold';
+            return 'text-slate-400 font-medium';
+        }
+
+        function safeClass(r) {
+            const safe = r.safe_stock, stock = r.current_stock ?? 0;
+            if (safe === null || safe <= 0) return 'text-slate-400 font-medium';
+            if (stock <= 0) return 'text-error font-bold';
+            if (stock < safe) return 'text-amber-500 font-bold';
+            return 'text-green-600 font-bold';
+        }
+
+        function getRowClass(r) {
+            const safe = r.safe_stock, stock = r.current_stock ?? 0;
+            if (safe !== null && safe > 0 && (stock <= 0 || stock < safe)) return 'bg-error-container/20 hover:bg-error-container/40';
+            return 'bg-white hover:bg-surface-container-low/50';
+        }
+
+        function getBadgeHtml(r) {
+            const safe = r.safe_stock, stock = r.current_stock ?? 0;
+            if (safe === null || safe === 0) return '<span class="text-slate-400 font-medium">-</span>';
+            if (stock <= 0) return '<span class="bg-error-container text-on-error-container px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">cancel</span> 재고없음</span>';
+            if (stock < safe) return '<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">warning</span> 미달</span>';
+            return '<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">check_circle</span> 충족</span>';
+        }
+
+        function getTempHtml(r) {
+            let cls = 'bg-amber-50 text-amber-600 border border-amber-200';
+            if ((r.storage_temp || '').includes('-20') || (r.storage_temp || '').includes('이하')) cls = 'bg-blue-50 text-blue-600 border border-blue-200';
+            else if ((r.storage_temp || '').includes('2~8') || (r.storage_temp || '').includes('냉장')) cls = 'bg-green-50 text-green-600 border border-green-200';
+            return `<span class="${cls} px-2 py-0.5 rounded text-[10px] font-bold tracking-wider">${r.storage_temp || '-'}</span>`;
+        }
+
+        async function loadData() {
+            try {
+                const res = await fetch('/api/material-info');
+                const result = await res.json();
+                if (result.status === 'success') allRows.value = result.data;
+            } catch (e) {
+                console.error(e);
+            } finally {
+                loading.value = false;
+            }
+        }
+
+        onMounted(loadData);
+
+        return { allRows, loading, searchQuery, activeGroup, groupTabs, stats, filteredRows, formatPrice, stockColorClass, safeClass, getRowClass, getBadgeHtml, getTempHtml };
     }
-
-    function renderTable() {
-        const tbody = document.getElementById('info-tbody');
-        const query = document.getElementById('search-input').value.toLowerCase().trim();
-
-        let filtered = allRows;
-
-        // 그룹 필터
-        if (activeGroup !== 'ALL') {
-            filtered = filtered.filter(r => r.item_code.charAt(0).toUpperCase() === activeGroup);
-        }
-
-        // 검색 필터
-        if (query) {
-            filtered = filtered.filter(r =>
-                r.item_code.toLowerCase().includes(query) ||
-                (r.product_name || '').toLowerCase().includes(query) ||
-                (r.cat_no || '').toLowerCase().includes(query) ||
-                (r.manufacturer || '').toLowerCase().includes(query)
-            );
-        }
-
-        if (filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="12" class="text-center py-12 text-slate-400 font-medium">검색 결과가 없습니다.</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = filtered.map((r, idx) => {
-            const stock = r.current_stock ?? 0;
-            const safe = r.safe_stock;
-            const isWarning = safe !== null && safe > 0 && stock < safe;
-            const isZero = stock <= 0;
-
-            // 상태 배지 결정
-            let badgeHtml = '';
-            if (safe === null || safe === 0) {
-                badgeHtml = '<span class="text-slate-400 font-medium">-</span>';
-            } else if (isZero) {
-                badgeHtml = `<span class="bg-error-container text-on-error-container px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">cancel</span> 재고없음</span>`;
-            } else if (isWarning) {
-                badgeHtml = `<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">warning</span> 미달</span>`;
-            } else {
-                badgeHtml = `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">check_circle</span> 충족</span>`;
-            }
-
-            // 보관온도 배지
-            let tempClass = 'bg-amber-50 text-amber-600 border border-amber-200'; // room
-            if ((r.storage_temp || '').includes('-20') || (r.storage_temp || '').includes('이하')) {
-                tempClass = 'bg-blue-50 text-blue-600 border border-blue-200';
-            } else if ((r.storage_temp || '').includes('2~8') || (r.storage_temp || '').includes('냉장')) {
-                tempClass = 'bg-green-50 text-green-600 border border-green-200';
-            }
-            let tempHtml = `<span class="${tempClass} px-2 py-0.5 rounded text-[10px] font-bold tracking-wider">${r.storage_temp || '-'}</span>`;
-
-            // 안전재고 색상
-            let safeClass = 'text-slate-400 font-medium';
-            if (safe !== null && safe > 0) {
-                if (isZero) safeClass = 'text-error font-bold';
-                else if (isWarning) safeClass = 'text-amber-500 font-bold';
-                else safeClass = 'text-green-600 font-bold';
-            }
-
-            // 현재고 색상
-            let stockColorClass = stock > 0 ? 'text-green-600 font-bold' : (stock < 0 ? 'text-error font-bold' : 'text-slate-400 font-medium');
-
-            const rowClass = (isWarning || isZero) && safe !== null && safe > 0 ? 'bg-error-container/20 hover:bg-error-container/40' : 'bg-white hover:bg-surface-container-low/50';
-
-            return `<tr class="${rowClass} transition-colors border-b border-surface-container-low">
-                <td class="py-3 px-4 whitespace-nowrap"><span class="bg-surface-container-low text-primary px-2 py-1 rounded font-mono text-xs font-bold">${r.item_code}</span></td>
-                <td class="py-3 px-4 font-bold text-slate-700 min-w-[200px]">${r.product_name || '-'}</td>
-                <td class="py-3 px-4 text-xs text-slate-400 font-medium whitespace-nowrap">${r.cat_no || '-'}</td>
-                <td class="py-3 px-4 text-xs text-slate-600 whitespace-nowrap">${r.manufacturer || '-'}</td>
-                <td class="py-3 px-4 text-[10px] text-slate-400 uppercase whitespace-nowrap">${r.package_unit || '-'}</td>
-                <td class="py-3 px-4 text-[10px] text-slate-400 uppercase whitespace-nowrap">${r.unit || '-'}</td>
-                <td class="py-3 px-4 text-right font-medium text-slate-600 whitespace-nowrap">${r.unit_price ? '₩' + Number(r.unit_price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}) : '-'}</td>
-                <td class="py-3 px-4 text-right whitespace-nowrap"><span class="text-lg ${stockColorClass}">${stock !== null ? stock.toLocaleString() : '-'}</span> <span class="text-[10px] text-slate-400 ml-0.5">${r.unit || ''}</span></td>
-                <td class="py-3 px-4 text-right whitespace-nowrap ${safeClass}">${safe !== null && safe > 0 ? safe.toLocaleString() : '-'}</td>
-                <td class="py-3 px-4 text-center whitespace-nowrap">${badgeHtml}</td>
-                <td class="py-3 px-4 text-center whitespace-nowrap">${tempHtml}</td>
-                <td class="py-3 px-4 text-[10px] text-slate-500 font-medium whitespace-nowrap">${r.storage_location && r.storage_location !== '0' ? r.storage_location : '-'}</td>
-            </tr>`;
-        }).join('');
-    }
+}).mount('#vue-app');
 </script>
 {% endblock %}

@@ -6,6 +6,7 @@
 {% block title %}생산 관리 - MO 생성 | Kinetic MES{% endblock %}
 
 {% block content %}
+<div id="vue-app">
 <!-- Page Header -->
 <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
@@ -17,7 +18,7 @@
     </div>
 </div>
 
-<form action="/api/mo/generate" method="post" id="mo-form" class="space-y-6">
+<form action="/api/mo/generate" method="post" id="mo-form" class="space-y-6" @submit="handleSubmit">
     <!-- 1. 생산총괄 -->
     <section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white">
         <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6 pb-2 border-b border-surface-variant">
@@ -31,22 +32,20 @@
         </div>
 
         <div class="space-y-3">
-            {% for i in range(12, 15) %}
-            <div class="grid grid-cols-3 gap-4 bg-slate-50 p-3 rounded-xl border border-surface-variant group hover:border-primary/30 transition-colors">
+            <div v-for="item in section1Items" :key="item.row" class="grid grid-cols-3 gap-4 bg-slate-50 p-3 rounded-xl border border-surface-variant group hover:border-primary/30 transition-colors">
                 <div class="flex flex-col gap-1.5 focus-within:text-primary transition-colors">
-                    <label class="text-[10px] font-bold text-slate-500">A{{i}} (접수번호)</label>
-                    <input type="text" name="Sheet1_A{{i}}" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" placeholder="접수번호 입력">
+                    <label class="text-[10px] font-bold text-slate-500">A${item.row} (접수번호)</label>
+                    <input type="text" :name="'Sheet1_A' + item.row" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" placeholder="접수번호 입력">
                 </div>
                 <div class="flex flex-col gap-1.5 focus-within:text-primary transition-colors">
-                    <label class="text-[10px] font-bold text-slate-500">C{{i}} (수량)</label>
-                    <input type="text" name="Sheet1_C{{i}}" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="52">
+                    <label class="text-[10px] font-bold text-slate-500">C${item.row} (수량)</label>
+                    <input type="text" :name="'Sheet1_C' + item.row" v-model="item.qty" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none">
                 </div>
                 <div class="flex flex-col gap-1.5 focus-within:text-primary transition-colors">
-                    <label class="text-[10px] font-bold text-slate-500">G{{i}} (Lot No)</label>
-                    <input type="text" name="Sheet1_G{{i}}" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" placeholder="Lot No 입력">
+                    <label class="text-[10px] font-bold text-slate-500">G${item.row} (Lot No)</label>
+                    <input type="text" :name="'Sheet1_G' + item.row" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" placeholder="Lot No 입력">
                 </div>
             </div>
-            {% endfor %}
         </div>
     </section>
 
@@ -63,22 +62,20 @@
         </div>
 
         <div class="space-y-3">
-            {% for i in range(20, 23) %}
-            <div class="grid grid-cols-3 gap-4 bg-slate-50 p-3 rounded-xl border border-surface-variant group hover:border-primary/30 transition-colors">
+            <div v-for="item in section2Items" :key="item.row" class="grid grid-cols-3 gap-4 bg-slate-50 p-3 rounded-xl border border-surface-variant group hover:border-primary/30 transition-colors">
                 <div class="flex flex-col gap-1.5 focus-within:text-primary transition-colors">
-                    <label class="text-[10px] font-bold text-slate-500">F{{i}} (버전)</label>
-                    <input type="text" name="Sheet1_F{{i}}" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="5.3">
+                    <label class="text-[10px] font-bold text-slate-500">F${item.row} (버전)</label>
+                    <input type="text" :name="'Sheet1_F' + item.row" v-model="item.ver" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none">
                 </div>
                 <div class="flex flex-col gap-1.5 focus-within:text-primary transition-colors">
-                    <label class="text-[10px] font-bold text-slate-500">H{{i}} (IFU)</label>
-                    <input type="text" name="Sheet1_H{{i}}" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" placeholder="IFU 입력">
+                    <label class="text-[10px] font-bold text-slate-500">H${item.row} (IFU)</label>
+                    <input type="text" :name="'Sheet1_H' + item.row" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" placeholder="IFU 입력">
                 </div>
                 <div class="flex flex-col gap-1.5 focus-within:text-primary transition-colors">
-                    <label class="text-[10px] font-bold text-slate-500">E{{i}} (포장일자)</label>
-                    <input type="date" name="Sheet1_E{{i}}" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-27">
+                    <label class="text-[10px] font-bold text-slate-500">E${item.row} (포장일자)</label>
+                    <input type="date" :name="'Sheet1_E' + item.row" v-model="item.date" class="bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none">
                 </div>
             </div>
-            {% endfor %}
         </div>
     </section>
 
@@ -104,17 +101,9 @@
                 </div>
             </div>
             <div class="col-span-5 space-y-3">
-                <div class="flex items-center gap-3">
-                    <label class="w-24 text-[10px] font-bold text-slate-500 bg-white border border-surface-variant px-2 py-1 rounded text-center">PL-1 (E28)</label>
-                    <input type="date" name="Sheet1_E28" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-22">
-                </div>
-                <div class="flex items-center gap-3">
-                    <label class="w-24 text-[10px] font-bold text-slate-500 bg-white border border-surface-variant px-2 py-1 rounded text-center">PL-2 (E29)</label>
-                    <input type="date" name="Sheet1_E29" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-23">
-                </div>
-                <div class="flex items-center gap-3">
-                    <label class="w-24 text-[10px] font-bold text-slate-500 bg-white border border-surface-variant px-2 py-1 rounded text-center">PL-3 (E30)</label>
-                    <input type="date" name="Sheet1_E30" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-24">
+                <div v-for="pl in plItems" :key="pl.key" class="flex items-center gap-3">
+                    <label class="w-24 text-[10px] font-bold text-slate-500 bg-white border border-surface-variant px-2 py-1 rounded text-center">${pl.name} (${pl.key})</label>
+                    <input type="date" :name="'Sheet1_' + pl.key" v-model="pl.date" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none">
                 </div>
             </div>
         </div>
@@ -129,17 +118,9 @@
                 </div>
             </div>
             <div class="col-span-5 space-y-3">
-                <div class="flex items-center gap-3">
-                    <label class="w-24 text-[10px] font-bold text-slate-500 bg-white border border-surface-variant px-2 py-1 rounded text-center">SS-1 (J28)</label>
-                    <input type="date" name="Sheet1_J28" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-22">
-                </div>
-                <div class="flex items-center gap-3">
-                    <label class="w-24 text-[10px] font-bold text-slate-500 bg-white border border-surface-variant px-2 py-1 rounded text-center">SS-2 (J29)</label>
-                    <input type="date" name="Sheet1_J29" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-23">
-                </div>
-                <div class="flex items-center gap-3">
-                    <label class="w-24 text-[10px] font-bold text-slate-500 bg-white border border-surface-variant px-2 py-1 rounded text-center">SS-3 (J30)</label>
-                    <input type="date" name="Sheet1_J30" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-24">
+                <div v-for="ss in ssItems" :key="ss.key" class="flex items-center gap-3">
+                    <label class="w-24 text-[10px] font-bold text-slate-500 bg-white border border-surface-variant px-2 py-1 rounded text-center">${ss.name} (${ss.key})</label>
+                    <input type="date" :name="'Sheet1_' + ss.key" v-model="ss.date" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none">
                 </div>
             </div>
         </div>
@@ -158,7 +139,7 @@
             <label class="font-bold flex items-center gap-2 mb-2 relative z-10">
                 <span class="material-symbols-outlined">content_paste_go</span> 제조지침 일괄 복사/붙여넣기
             </label>
-            <textarea id="bulk-paste" rows="3" class="w-full bg-white border border-primary/20 focus:border-primary rounded-lg px-4 py-3 text-sm text-slate-700 transition-all outline-none shadow-sm relative z-10" placeholder="엑셀의 제조지침서 No. 열을 통째로 복사하여 여기에 붙여넣으세요. 아래 CB~TM 영역에 순서대로 자동 입력됩니다."></textarea>
+            <textarea v-model="bulkPasteText" rows="3" class="w-full bg-white border border-primary/20 focus:border-primary rounded-lg px-4 py-3 text-sm text-slate-700 transition-all outline-none shadow-sm relative z-10" placeholder="엑셀의 제조지침서 No. 열을 통째로 복사하여 여기에 붙여넣으세요. 아래 CB~TM 영역에 순서대로 자동 입력됩니다."></textarea>
             <p class="text-xs font-medium text-primary/70 mt-2 relative z-10 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">info</span> 여러 항목을 한 번에 붙여넣을 때 유용합니다.</p>
         </div>
 
@@ -169,66 +150,102 @@
         </div>
         
         <div class="space-y-3">
-            {% set processes = [
-                ('CB (버퍼 조제)', 'B34', 'F34'), ('PB (비드 조제)', 'B35', 'F35'), ('WB (세척 조제)', 'B36', 'F36'), 
-                ('CR (시약 조제)', 'B37', 'F37'), ('PC (핵산 조제)', 'B38', 'F38'), ('NC (음성 조제)', 'B39', 'F39'), 
-                ('DA (핵산 분주)', 'B40', 'F40'), ('RD (시약 분주)', 'B41', 'F41'), ('WS (봉합)', 'B42', 'F42'), 
-                ('TM (합본)', 'B43', 'F43')
-            ] %}
-            {% for name, inst, dt in processes %}
-            <div class="grid grid-cols-12 gap-4 items-center bg-slate-50 p-2.5 rounded-xl border border-surface-variant hover:border-primary/30 transition-colors">
-                <div class="col-span-2 font-bold text-slate-700 text-sm whitespace-nowrap px-2">{{name}}</div>
+            <div v-for="proc in processes" :key="proc.instId" class="grid grid-cols-12 gap-4 items-center bg-slate-50 p-2.5 rounded-xl border border-surface-variant hover:border-primary/30 transition-colors">
+                <div class="col-span-2 font-bold text-slate-700 text-sm whitespace-nowrap px-2">${proc.name}</div>
                 <div class="col-span-6 flex items-center gap-3">
-                    <label class="text-[10px] font-bold text-slate-400 w-8 text-right hidden lg:block">{{inst}}</label>
-                    <input type="text" name="Sheet1_{{inst}}" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none inst-field" placeholder="지침 입력">
+                    <label class="text-[10px] font-bold text-slate-400 w-8 text-right hidden lg:block">${proc.instId}</label>
+                    <input type="text" :name="'Sheet1_' + proc.instId" v-model="proc.inst" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" placeholder="지침 입력">
                 </div>
                 <div class="col-span-4 flex items-center gap-3">
-                    <label class="text-[10px] font-bold text-slate-400 w-8 text-right hidden lg:block">{{dt}}</label>
-                    <input type="date" name="Sheet1_{{dt}}" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none" value="2025-10-21">
+                    <label class="text-[10px] font-bold text-slate-400 w-8 text-right hidden lg:block">${proc.dtId}</label>
+                    <input type="date" :name="'Sheet1_' + proc.dtId" v-model="proc.dt" class="flex-1 bg-white border border-surface-variant focus:border-primary rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition-all outline-none">
                 </div>
             </div>
-            {% endfor %}
         </div>
     </section>
 
     <!-- Form Submit -->
     <div class="sticky bottom-8 z-20">
-        <button type="submit" class="w-full bg-primary hover:bg-primary-hover text-white font-bold px-6 py-4 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-primary/20 text-lg">
-            <span class="material-symbols-outlined text-2xl">download</span> MO 엑셀 문서 자동 생성 및 다운로드
+        <button type="submit" :disabled="isSubmitting" :class="isSubmitting ? 'opacity-80' : ''" class="w-full bg-primary hover:bg-primary-hover text-white font-bold px-6 py-4 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-primary/20 text-lg">
+            <span v-if="!isSubmitting" class="material-symbols-outlined text-2xl">download</span>
+            <span v-else class="material-symbols-outlined text-2xl animate-spin">progress_activity</span>
+            ${ isSubmitting ? 'MO 문서 생성 및 다운로드 중...' : 'MO 엑셀 문서 자동 생성 및 다운로드' }
         </button>
     </div>
 </form>
+</div> <!-- Vue app end -->
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-    // 엑셀 복사/붙여넣기 자동 분배 로직
-    document.getElementById('bulk-paste').addEventListener('input', function(e) {
-        const text = e.target.value;
-        const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
-        const fields = document.querySelectorAll('.inst-field');
-        
-        lines.forEach((line, index) => {
-            if (index < fields.length) {
-                fields[index].value = line.trim();
-            }
-        });
-    });
+    const { createApp, ref, watch } = Vue;
 
-    // 폼 제출 시 버튼 상태 변경 (피드백 제공)
-    document.getElementById('mo-form').addEventListener('submit', function() {
-        const btn = this.querySelector('button[type="submit"]');
-        const originalContent = btn.innerHTML;
-        btn.innerHTML = '<span class="material-symbols-outlined animate-spin align-middle mr-2 mt-1">progress_activity</span> <span class="align-middle">MO 문서 생성 중...</span>';
-        btn.disabled = true;
-        btn.classList.add('opacity-80');
-        
-        // 파일 다운로드가 시작되면 감지하기 어렵지만, 약 5초 후 복구
-        setTimeout(() => {
-            btn.innerHTML = originalContent;
-            btn.disabled = false;
-            btn.classList.remove('opacity-80');
-        }, 5000);
-    });
+    createApp({
+        delimiters: ['${', '}'],
+        setup() {
+            // Data models for the dynamically generated fields
+            const section1Items = ref([
+                { row: 12, qty: '52' }, { row: 13, qty: '52' }, { row: 14, qty: '52' }
+            ]);
+
+            const section2Items = ref([
+                { row: 20, ver: '5.3', date: '2025-10-27' },
+                { row: 21, ver: '5.3', date: '2025-10-27' },
+                { row: 22, ver: '5.3', date: '2025-10-27' }
+            ]);
+
+            const plItems = ref([
+                { name: 'PL-1', key: 'E28', date: '2025-10-22' },
+                { name: 'PL-2', key: 'E29', date: '2025-10-23' },
+                { name: 'PL-3', key: 'E30', date: '2025-10-24' }
+            ]);
+
+            const ssItems = ref([
+                { name: 'SS-1', key: 'J28', date: '2025-10-22' },
+                { name: 'SS-2', key: 'J29', date: '2025-10-23' },
+                { name: 'SS-3', key: 'J30', date: '2025-10-24' }
+            ]);
+
+            const bulkPasteText = ref('');
+            const processes = ref([
+                { name: 'CB (버퍼 조제)', instId: 'B34', dtId: 'F34', inst: '', dt: '2025-10-21' },
+                { name: 'PB (비드 조제)', instId: 'B35', dtId: 'F35', inst: '', dt: '2025-10-21' },
+                { name: 'WB (세척 조제)', instId: 'B36', dtId: 'F36', inst: '', dt: '2025-10-21' },
+                { name: 'CR (시약 조제)', instId: 'B37', dtId: 'F37', inst: '', dt: '2025-10-21' },
+                { name: 'PC (핵산 조제)', instId: 'B38', dtId: 'F38', inst: '', dt: '2025-10-21' },
+                { name: 'NC (음성 조제)', instId: 'B39', dtId: 'F39', inst: '', dt: '2025-10-21' },
+                { name: 'DA (핵산 분주)', instId: 'B40', dtId: 'F40', inst: '', dt: '2025-10-21' },
+                { name: 'RD (시약 분주)', instId: 'B41', dtId: 'F41', inst: '', dt: '2025-10-21' },
+                { name: 'WS (봉합)', instId: 'B42', dtId: 'F42', inst: '', dt: '2025-10-21' },
+                { name: 'TM (합본)', instId: 'B43', dtId: 'F43', inst: '', dt: '2025-10-21' }
+            ]);
+
+            // React to bulk paste text changes
+            watch(bulkPasteText, (newText) => {
+                const lines = newText.split(/\r?\n/).filter(line => line.trim() !== "");
+                lines.forEach((line, index) => {
+                    if (index < processes.value.length) {
+                        processes.value[index].inst = line.trim();
+                    }
+                });
+            });
+
+            const isSubmitting = ref(false);
+            const handleSubmit = () => {
+                isSubmitting.value = true;
+                // Form natively submits to /api/mo/generate, so we just clear loading state after 5 seconds
+                setTimeout(() => {
+                    isSubmitting.value = false;
+                }, 5000);
+            };
+
+            return {
+                section1Items, section2Items,
+                plItems, ssItems,
+                bulkPasteText, processes,
+                isSubmitting, handleSubmit
+            };
+        }
+    }).mount('#vue-app');
 </script>
 {% endblock %}

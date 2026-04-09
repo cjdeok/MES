@@ -10,8 +10,9 @@
 {% endblock %}
 
 {% block content %}
+<div id="vue-app">
 <!-- Loading Overlay -->
-<div id="loading" class="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-sm flex flex-col justify-center items-center">
+<div v-show="loading" class="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-sm flex flex-col justify-center items-center transition-opacity duration-300">
     <span class="material-symbols-outlined text-white text-6xl animate-spin mb-4">progress_activity</span>
     <div class="text-white font-bold tracking-widest uppercase">구매 데이터 정밀 분석 중...</div>
 </div>
@@ -32,15 +33,15 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
         <div class="flex flex-col gap-2">
             <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">조회 시작일</label>
-            <input type="date" id="startDate" class="w-full bg-surface-container-low border border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none shadow-sm">
+            <input type="date" v-model="filters.startDate" class="w-full bg-surface-container-low border border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none shadow-sm">
         </div>
         <div class="flex flex-col gap-2">
             <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">조회 종료일</label>
-            <input type="date" id="endDate" class="w-full bg-surface-container-low border border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none shadow-sm">
+            <input type="date" v-model="filters.endDate" class="w-full bg-surface-container-low border border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none shadow-sm">
         </div>
         <div class="flex flex-col gap-2">
             <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">분류 구분</label>
-            <select id="categoryDropdown" class="w-full bg-surface-container-low border border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none shadow-sm" onchange="onCategoryChange()">
+            <select v-model="filters.category" @change="filters.product = ''" class="w-full bg-surface-container-low border border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none shadow-sm">
                 <option value="">전체 구분</option>
                 <option value="밸리데이션">밸리데이션</option>
                 <option value="원료">원료</option>
@@ -48,8 +49,9 @@
         </div>
         <div class="flex flex-col gap-2 relative">
             <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">분석 품명1 선택 <span class="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded ml-1">상세분석</span></label>
-            <select id="productDropdown" class="w-full bg-primary/5 border border-primary/20 focus:border-primary focus:bg-white text-primary rounded-lg px-4 py-3 text-sm font-bold transition-all outline-none shadow-sm">
+            <select v-model="filters.product" class="w-full bg-primary/5 border border-primary/20 focus:border-primary focus:bg-white text-primary rounded-lg px-4 py-3 text-sm font-bold transition-all outline-none shadow-sm">
                 <option value="">-- 품명을 선택하세요 --</option>
+                <option v-for="p in availableProducts" :key="p" :value="p">${ p }</option>
             </select>
             <div class="absolute -top-2 -right-2">
                 <span class="relative flex h-3 w-3">
@@ -59,43 +61,37 @@
             </div>
         </div>
     </div>
-    
-    <div class="mt-6 flex justify-end">
-        <button onclick="performSearch()" class="bg-primary hover:bg-primary-hover text-white font-bold px-8 py-3 rounded-lg flex items-center gap-2 transition-all active:scale-95 shadow-md">
-            <span class="material-symbols-outlined text-[20px]">search</span> 데이터 조회
-        </button>
-    </div>
 </section>
 
 <!-- Summary Panel -->
-<div id="summaryPanel" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
     <div class="bg-surface-container-lowest border-y border-r border-l-4 border-l-primary rounded-xl p-5 cloud-shadow flex flex-col justify-center">
         <span class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">총 구매 건수</span>
-        <span id="sum-count" class="text-2xl font-black text-slate-800">0건</span>
+        <span class="text-2xl font-black text-slate-800">${ summary.count.toLocaleString() }건</span>
     </div>
     <div class="bg-surface-container-lowest border-y border-r border-l-4 border-l-primary rounded-xl p-5 cloud-shadow flex flex-col justify-center">
         <span class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">총 구매 금액 합계</span>
-        <span id="sum-total" class="text-2xl font-black text-primary">₩0</span>
+        <span class="text-2xl font-black text-primary">₩${ summary.total.toLocaleString() }</span>
     </div>
     <div class="bg-surface-container-lowest border-y border-r border-l-4 border-l-indigo-500 rounded-xl p-5 cloud-shadow flex flex-col justify-center">
         <span class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">평균 실단가</span>
-        <span id="sum-avg" class="text-2xl font-black text-indigo-600">₩0</span>
+        <span class="text-2xl font-black text-indigo-600">₩${ summary.avg.toLocaleString() }</span>
     </div>
     <div class="bg-surface-container-lowest border-x border-y border-surface-variant rounded-xl p-5 cloud-shadow flex flex-col justify-center col-span-1 lg:col-span-2 relative overflow-hidden group hover:border-primary/30 transition-colors">
         <div class="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
             <span class="material-symbols-outlined text-9xl">storefront</span>
         </div>
         <span class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 relative z-10">주요 구매처</span>
-        <div id="sum-vendors" class="text-sm font-bold text-slate-700 leading-relaxed truncate relative z-10">-</div>
+        <div class="text-sm font-bold text-slate-700 leading-relaxed truncate relative z-10" :title="summary.vendors">${ summary.vendors }</div>
     </div>
 </div>
 
 <!-- Chart Section -->
-<div id="chartSection" class="hidden mb-8">
+<div v-show="filters.product" class="mb-8">
     <div class="bg-surface-container-lowest p-6 rounded-2xl cloud-shadow border border-white h-[400px] flex flex-col">
         <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
             <span class="material-symbols-outlined text-primary">show_chart</span> 
-            <span id="chartTitle">단가 변동 흐름</span>
+            <span>[${ filters.product }] 단가 변동 흐름</span>
         </h3>
         <div class="flex-1 relative w-full h-full">
             <canvas id="priceChart"></canvas>
@@ -113,25 +109,71 @@
 
     <div class="overflow-x-auto border border-surface-variant rounded-xl hide-scrollbar flex-1">
         <table class="w-full text-left border-collapse">
-            <thead id="tableHead" class="bg-surface-container-low sticky top-0 z-10">
-                <!-- 동적 헤더 -->
+            <thead class="bg-surface-container-low sticky top-0 z-10">
+                <template v-if="filters.product">
+                    <tr class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-surface-variant">
+                        <th class="py-3 px-6 whitespace-nowrap">일자</th>
+                        <th class="py-3 px-6 whitespace-nowrap">구매처</th>
+                        <th class="py-3 px-6 whitespace-nowrap">품명1</th>
+                        <th class="py-3 px-6 whitespace-nowrap text-right">입고량</th>
+                        <th class="py-3 px-6 whitespace-nowrap text-right text-primary">실단가</th>
+                        <th class="py-3 px-6 whitespace-nowrap text-center">전기 대비</th>
+                        <th class="py-3 px-6 whitespace-nowrap text-right text-primary">금액</th>
+                    </tr>
+                </template>
+                <template v-else>
+                    <tr class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-surface-variant">
+                        <th class="py-3 px-6 whitespace-nowrap">일자</th>
+                        <th class="py-3 px-6 whitespace-nowrap text-center">구분</th>
+                        <th class="py-3 px-6 whitespace-nowrap">문서번호</th>
+                        <th class="py-3 px-6 whitespace-nowrap">품명1</th>
+                        <th class="py-3 px-6 whitespace-nowrap">구매처</th>
+                        <th class="py-3 px-6 whitespace-nowrap text-right">수량</th>
+                        <th class="py-3 px-6 whitespace-nowrap text-right text-primary">금액</th>
+                    </tr>
+                </template>
             </thead>
-            <tbody id="tableBody" class="text-sm divide-y divide-surface-container-low bg-white">
-                <tr><td colspan="8" class="text-center py-12 text-slate-400 font-medium"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 데이터를 기다리는 중...</td></tr>
+            <tbody class="text-sm divide-y divide-surface-container-low bg-white">
+                <tr v-if="!loading && displayedData.length === 0"><td colspan="8" class="text-center py-12 text-slate-400 font-medium">검색 결과가 없습니다.</td></tr>
+                <template v-else v-for="(item, idx) in displayedData" :key="idx">
+                    <tr v-if="filters.product" class="hover:bg-slate-50 transition-colors cursor-default">
+                        <td class="py-4 px-6 text-xs text-slate-500 font-medium whitespace-nowrap">${item.작성일자}</td>
+                        <td class="py-4 px-6 font-bold text-slate-600 whitespace-nowrap">${item.구매처}</td>
+                        <td class="py-4 px-6 font-bold text-slate-800 whitespace-nowrap">${item.품명1}</td>
+                        <td class="py-4 px-6 text-right whitespace-nowrap font-medium text-slate-700">${(item.실입고량 || 0).toLocaleString()}</td>
+                        <td class="py-4 px-6 text-right whitespace-nowrap font-bold text-primary">₩${(item.실단가 || 0).toLocaleString()}</td>
+                        <td class="py-4 px-6 whitespace-nowrap">
+                            <span v-if="!getDiff(idx)" class="price-stable">-</span>
+                            <span v-else-if="getDiff(idx) > 0" class="price-up"><span class="material-symbols-outlined text-[16px]">arrow_upward</span> ₩${ getDiff(idx).toLocaleString() }</span>
+                            <span v-else class="price-down"><span class="material-symbols-outlined text-[16px]">arrow_downward</span> ₩${ Math.abs(getDiff(idx)).toLocaleString() }</span>
+                        </td>
+                        <td class="py-4 px-6 text-right whitespace-nowrap font-black text-primary">₩${(item.금액 || 0).toLocaleString()}</td>
+                    </tr>
+                    <tr v-else class="hover:bg-slate-50 transition-colors cursor-default">
+                        <td class="py-4 px-6 whitespace-nowrap"><span class="doc-link shadow-sm" @click="openModal(item.작성일자)">${item.작성일자}</span></td>
+                        <td class="py-4 px-6 whitespace-nowrap text-center"><span :class="item.구분 === '밸리데이션' ? 'bg-primary/10 text-primary' : 'bg-green-100 text-green-700'" class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest">${item.구분 || '-'}</span></td>
+                        <td class="py-4 px-6 text-xs text-slate-500 font-medium whitespace-nowrap">${item.문서번호 || '-'}</td>
+                        <td class="py-4 px-6 font-bold text-slate-800 whitespace-nowrap">${item.품명1}</td>
+                        <td class="py-4 px-6 font-bold text-slate-600 whitespace-nowrap">${item.구매처 || '-'}</td>
+                        <td class="py-4 px-6 text-right whitespace-nowrap font-medium text-slate-700">${(item.수량 || 0).toLocaleString()}</td>
+                        <td class="py-4 px-6 text-right whitespace-nowrap font-black text-primary">₩${(item.금액 || 0).toLocaleString()}</td>
+                    </tr>
+                </template>
             </tbody>
         </table>
     </div>
 </section>
 
 <!-- Document Detail Modal -->
-<div id="doc-modal" class="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center opacity-0 transition-opacity duration-200" onclick="if(event.target===this) closeDocModal()">
-    <div class="bg-white rounded-2xl w-11/12 max-w-7xl max-h-[85vh] flex flex-col cloud-shadow transform translate-y-4 transition-transform duration-200" id="doc-modal-content">
+<!-- 모달은 Vue 범위 내부에 두어 데이터를 깔끔하게 매핑 -->
+<div v-show="modal.show" class="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center transition-opacity duration-200" :class="modal.visible ? 'opacity-100' : 'opacity-0'" @click.self="closeModal()">
+    <div class="bg-white rounded-2xl w-11/12 max-w-7xl max-h-[85vh] flex flex-col cloud-shadow transform transition-transform duration-200" :class="modal.visible ? 'translate-y-0' : 'translate-y-4'">
         <div class="px-6 py-5 border-b border-surface-variant flex justify-between items-center bg-surface-container-low rounded-t-2xl">
             <h3 class="font-bold text-lg text-on-surface flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary">receipt_long</span> 
-                <span id="modal-doc-title">문서 상세 내역</span>
+                <span>[${ modal.date }] 상세 내역</span>
             </h3>
-            <button class="text-slate-400 hover:text-slate-700 transition-colors" onclick="closeDocModal()">
+            <button class="text-slate-400 hover:text-slate-700 transition-colors" @click="closeModal()">
                 <span class="material-symbols-outlined text-2xl">close</span>
             </button>
         </div>
@@ -154,13 +196,28 @@
                         <th class="py-3 px-4">E-mail</th>
                     </tr>
                 </thead>
-                <tbody id="modal-tbody" class="text-sm divide-y divide-surface-container-low">
-                    <!-- 동적 삽입 -->
+                <tbody class="text-sm divide-y divide-surface-container-low">
+                    <tr v-for="(item, idx) in modal.data" :key="idx" class="hover:bg-slate-50 transition-colors bg-white">
+                        <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-500 font-medium">${item.작성일자 || '-'}</td>
+                        <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-500 font-medium">${item.작성자 || '-'}</td>
+                        <td class="py-4 px-4 whitespace-nowrap font-mono text-xs font-bold text-primary">${item.cat_no || '-'}</td>
+                        <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-600">${item.제조사 || '-'}</td>
+                        <td class="py-4 px-4 whitespace-nowrap font-bold text-slate-800">${item.구매처 || '-'}</td>
+                        <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-600">${item.규격 || '-'}</td>
+                        <td class="py-4 px-4 whitespace-nowrap text-center text-xs text-slate-400 font-bold uppercase">${item.단위 || '-'}</td>
+                        <td class="py-4 px-4 whitespace-nowrap text-right font-bold text-slate-700">${(item.수량 || 0).toLocaleString()}</td>
+                        <td class="py-4 px-4 whitespace-nowrap text-right font-bold text-slate-600">₩${(item.단가 || 0).toLocaleString()}</td>
+                        <td class="py-4 px-4 whitespace-nowrap text-right font-black text-primary">₩${(item.금액 || 0).toLocaleString()}</td>
+                        <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-500 font-medium">${item.담당자 || '-'}</td>
+                        <td class="py-4 px-4 whitespace-nowrap font-mono text-xs text-slate-600">${item.연락처 || '-'}</td>
+                        <td class="py-4 px-4 whitespace-nowrap font-mono text-xs text-slate-500">${item.email || '-'}</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+</div><!-- end vue-app -->
 {% endblock %}
 
 {% block extra_scripts %}
@@ -186,309 +243,166 @@
     .doc-link:hover { background: #dbeafe; color: #1d4ed8; }
 </style>
 <script>
-    let allData = [];
-    let priceChartInstance = null;
+const { createApp, ref, reactive, computed, watch, nextTick, onMounted } = Vue;
 
-    async function init() {
-        try {
-            const res = await fetch('/api/purchase/info');
-            const result = await res.json();
-            
-            if (result.status === 'success') {
-                allData = result.data;
-                
-                if (allData.length > 0) {
-                    // 최초 구매일 찾기
-                    const dates = allData.map(d => new Date(d.작성일자)).filter(d => !isNaN(d));
-                    const minDate = new Date(Math.min(...dates));
-                    const maxDate = new Date(); // 오늘
-
-                    document.getElementById('startDate').value = minDate.toISOString().split('T')[0];
-                    document.getElementById('endDate').value = maxDate.toISOString().split('T')[0];
-                }
-                
-                onCategoryChange();
-                performSearch();
-            }
-        } catch (err) { console.error(err); }
-        finally { 
-            const loader = document.getElementById('loading');
-            loader.style.opacity = '0';
-            setTimeout(() => loader.style.display = 'none', 300);
-        }
-    }
-
-    function onCategoryChange() {
-        const category = document.getElementById('categoryDropdown').value;
-        const select = document.getElementById('productDropdown');
-        select.innerHTML = '<option value="">-- 품명을 선택하세요 --</option>';
+createApp({
+    delimiters: ['${', '}'],
+    setup() {
+        const allData = ref([]);
+        const loading = ref(true);
+        const modal = reactive({ show: false, visible: false, date: '', data: [] });
         
-        let filteredProducts = [];
-        if (category) {
-            filteredProducts = [...new Set(allData.filter(d => d.구분 === category).map(d => d.품명1).filter(Boolean))].sort();
-        } else {
-            filteredProducts = [...new Set(allData.map(d => d.품명1).filter(Boolean))].sort();
-        }
-        
-        filteredProducts.forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p; opt.textContent = p;
-            select.appendChild(opt);
+        const filters = reactive({
+            startDate: '', endDate: '', category: '', product: ''
         });
-    }
 
-    function performSearch() {
-        const start = document.getElementById('startDate').value;
-        const end = document.getElementById('endDate').value;
-        const category = document.getElementById('categoryDropdown').value;
-        const product = document.getElementById('productDropdown').value;
+        let chartInstance = null;
 
-        let filtered = allData.filter(d => {
-            const dDate = new Date(d.작성일자);
-            const dateMatch = (!start || dDate >= new Date(start)) && (!end || dDate <= new Date(end));
-            const catMatch = !category || d.구분 === category;
-            return dateMatch && catMatch;
-        }).sort((a, b) => new Date(a.작성일자) - new Date(b.작성일자));
-
-        if (product) {
-            filtered = filtered.filter(d => d.품명1 === product);
-            if (filtered.length > 0) {
-                renderChart(filtered, product);
-                document.getElementById('chartSection').style.display = 'block';
-                renderTable(filtered, true);
-                updateSummary(filtered);
-            }
-        } else {
-            document.getElementById('chartSection').style.display = 'none';
-            renderTable(filtered, false);
-            updateSummary(filtered);
-        }
-    }
-
-    function renderChart(data, productName) {
-        const ctx = document.getElementById('priceChart').getContext('2d');
-        if (priceChartInstance) priceChartInstance.destroy();
-
-        document.getElementById('chartTitle').innerText = `[${productName}] 단가 변동 흐름`;
-
-        const prices = data.map(d => d.실단가 || 0);
-        const minPrice = Math.min(...prices);
-        const maxPrice = Math.max(...prices);
-        
-        // Y축 최적화: 최저가보다 10% 낮은 지점부터 시작
-        const yMin = Math.floor(minPrice * 0.9);
-
-        Chart.defaults.font.family = "'Inter', sans-serif";
-
-        priceChartInstance = new Chart(ctx, {
-            type: 'line', // 선 차트로 변경하여 흐름을 더 잘 보여주기
-            data: {
-                labels: data.map(d => d.작성일자),
-                datasets: [{
-                    label: '실단가 (₩)',
-                    data: prices,
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    borderColor: '#3b82f6',
-                    borderWidth: 2,
-                    pointBackgroundColor: '#fff',
-                    pointBorderColor: '#3b82f6',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    fill: true,
-                    tension: 0.2 // 약간의 곡선
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { 
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#1e293b',
-                        titleFont: { size: 13 },
-                        bodyFont: { size: 14, weight: 'bold' },
-                        padding: 12,
-                        cornerRadius: 8,
-                        displayColors: false,
-                        callbacks: {
-                            label: function(context) {
-                                return '₩' + context.parsed.y.toLocaleString();
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: { 
-                        min: yMin,
-                        grid: { color: '#f1f5f9' },
-                        border: { display: false },
-                        ticks: { 
-                            color: '#64748b',
-                            font: { size: 11, weight: 'bold' },
-                            callback: value => '₩' + value.toLocaleString()
-                        }
-                    },
-                    x: { 
-                        grid: { display: false }, 
-                        border: { display: false },
-                        ticks: { color: '#64748b', font: { size: 11 } } 
-                    }
-                }
-            }
-        });
-    }
-
-    function renderTable(data, isDetail) {
-        const thead = document.getElementById('tableHead');
-        const tbody = document.getElementById('tableBody');
-        tbody.innerHTML = '';
-
-        if (isDetail) {
-            thead.innerHTML = `
-                <tr class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-surface-variant">
-                    <th class="py-3 px-6 whitespace-nowrap">일자</th>
-                    <th class="py-3 px-6 whitespace-nowrap">구매처</th>
-                    <th class="py-3 px-6 whitespace-nowrap">품명1</th>
-                    <th class="py-3 px-6 whitespace-nowrap text-right">입고량</th>
-                    <th class="py-3 px-6 whitespace-nowrap text-right text-primary">실단가</th>
-                    <th class="py-3 px-6 whitespace-nowrap text-center">전기 대비</th>
-                    <th class="py-3 px-6 whitespace-nowrap text-right text-primary">금액</th>
-                </tr>
-            `;
-        } else {
-            thead.innerHTML = `
-                <tr class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-surface-variant">
-                    <th class="py-3 px-6 whitespace-nowrap">일자</th>
-                    <th class="py-3 px-6 whitespace-nowrap text-center">구분</th>
-                    <th class="py-3 px-6 whitespace-nowrap">문서번호</th>
-                    <th class="py-3 px-6 whitespace-nowrap">품명1</th>
-                    <th class="py-3 px-6 whitespace-nowrap">구매처</th>
-                    <th class="py-3 px-6 whitespace-nowrap text-right">수량</th>
-                    <th class="py-3 px-6 whitespace-nowrap text-right text-primary">금액</th>
-                </tr>
-            `;
-        }
-
-        const displayData = [...data].reverse();
-        
-        if (displayData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-slate-400 font-medium">검색 결과가 없습니다.</td></tr>`;
-            return;
-        }
-
-        displayData.forEach(item => {
-            const tr = document.createElement('tr');
-            tr.className = "hover:bg-slate-50 transition-colors cursor-default";
-
-            if (isDetail) {
-                // 역순된 displayData 내에서 인덱스를 찾을 경우: 원본 data 배열에서의 인덱스를 사용
-                const originalIdx = data.indexOf(item);
-                const prev = originalIdx > 0 ? data[originalIdx - 1] : null; // data는 날짜 오름차순
-                
-                let diffHtml = '<span class="price-stable">-</span>';
-                if (prev) {
-                    const d = (item.실단가 || 0) - (prev.실단가 || 0);
-                    if (d > 0) diffHtml = `<span class="price-up"><span class="material-symbols-outlined text-[16px]">arrow_upward</span> ₩${d.toLocaleString()}</span>`;
-                    else if (d < 0) diffHtml = `<span class="price-down"><span class="material-symbols-outlined text-[16px]">arrow_downward</span> ₩${Math.abs(d).toLocaleString()}</span>`;
-                }
-                
-                tr.innerHTML = `
-                    <td class="py-4 px-6 text-xs text-slate-500 font-medium whitespace-nowrap">${item.작성일자}</td>
-                    <td class="py-4 px-6 font-bold text-slate-600 whitespace-nowrap">${item.구매처}</td>
-                    <td class="py-4 px-6 font-bold text-slate-800 whitespace-nowrap">${item.품명1}</td>
-                    <td class="py-4 px-6 text-right whitespace-nowrap font-medium text-slate-700">${(item.실입고량 || 0).toLocaleString()}</td>
-                    <td class="py-4 px-6 text-right whitespace-nowrap font-bold text-primary">₩${(item.실단가 || 0).toLocaleString()}</td>
-                    <td class="py-4 px-6 whitespace-nowrap">${diffHtml}</td>
-                    <td class="py-4 px-6 text-right whitespace-nowrap font-black text-primary">₩${(item.금액 || 0).toLocaleString()}</td>
-                `;
+        const availableProducts = computed(() => {
+            let products = [];
+            if (filters.category) {
+                products = allData.value.filter(d => d.구분 === filters.category).map(d => d.품명1);
             } else {
-                const badgeClass = item.구분 === '밸리데이션' ? 'bg-primary/10 text-primary' : 'bg-green-100 text-green-700';
-                const badgeHtml = `<span class="${badgeClass} px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest">${item.구분}</span>`;
-                const dateLink = `<span class="doc-link shadow-sm" onclick="openDateModal('${item.작성일자}')">${item.작성일자}</span>`;
-                
-                tr.innerHTML = `
-                    <td class="py-4 px-6 whitespace-nowrap">${dateLink}</td>
-                    <td class="py-4 px-6 whitespace-nowrap text-center">${badgeHtml}</td>
-                    <td class="py-4 px-6 text-xs text-slate-500 font-medium whitespace-nowrap">${item.문서번호 || '-'}</td>
-                    <td class="py-4 px-6 font-bold text-slate-800 whitespace-nowrap">${item.품명1}</td>
-                    <td class="py-4 px-6 font-bold text-slate-600 whitespace-nowrap">${item.구매처}</td>
-                    <td class="py-4 px-6 text-right whitespace-nowrap font-medium text-slate-700">${(item.수량 || 0).toLocaleString()}</td>
-                    <td class="py-4 px-6 text-right whitespace-nowrap font-black text-primary">₩${(item.금액 || 0).toLocaleString()}</td>
-                `;
+                products = allData.value.map(d => d.품명1);
             }
-            tbody.appendChild(tr);
+            return [...new Set(products.filter(Boolean))].sort();
         });
-    }
 
-    function updateSummary(data) {
-        const count = data.length;
-        const total = data.reduce((sum, d) => sum + (d.금액 || 0), 0);
-        const vendors = [...new Set(data.map(d => d.구매처).filter(Boolean))].sort();
-        
-        let avgPrice = 0;
-        if (count > 0) {
-            const priceSum = data.reduce((sum, d) => sum + (d.실단가 || 0), 0);
-            avgPrice = Math.round(priceSum / count);
-        }
+        const displayedData = computed(() => {
+            let result = allData.value.filter(d => {
+                const dDate = new Date(d.작성일자);
+                const startMatch = !filters.startDate || dDate >= new Date(filters.startDate);
+                const endMatch = !filters.endDate || dDate <= new Date(filters.endDate);
+                const catMatch = !filters.category || d.구분 === filters.category;
+                return startMatch && endMatch && catMatch;
+            }).sort((a, b) => new Date(a.작성일자) - new Date(b.작성일자));
 
-        document.getElementById('sum-count').innerText = count.toLocaleString() + '건';
-        document.getElementById('sum-total').innerText = '₩' + total.toLocaleString();
-        document.getElementById('sum-avg').innerText = '₩' + avgPrice.toLocaleString();
-        document.getElementById('sum-vendors').innerText = vendors.length > 0 ? vendors.join(', ') : '-';
-    }
-
-    init();
-
-    // ── Modal Functions ──
-    function openDateModal(date) {
-        const modal = document.getElementById('doc-modal');
-        const content = document.getElementById('doc-modal-content');
-        
-        document.getElementById('modal-doc-title').innerText = `[${date}] 상세 내역`;
-        const tbody = document.getElementById('modal-tbody');
-        
-        // 필터링: 작성일자가 일치하는 모든 데이터
-        const filtered = allData.filter(d => d.작성일자 === date);
-        
-        tbody.innerHTML = filtered.map(item => {
-            return `
-                <tr class="hover:bg-slate-50 transition-colors bg-white">
-                    <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-500 font-medium">${item.작성일자 || '-'}</td>
-                    <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-500 font-medium">${item.작성자 || '-'}</td>
-                    <td class="py-4 px-4 whitespace-nowrap font-mono text-xs font-bold text-primary">${item.cat_no || '-'}</td>
-                    <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-600">${item.제조사 || '-'}</td>
-                    <td class="py-4 px-4 whitespace-nowrap font-bold text-slate-800">${item.구매처 || '-'}</td>
-                    <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-600">${item.규격 || '-'}</td>
-                    <td class="py-4 px-4 whitespace-nowrap text-center text-xs text-slate-400 font-bold uppercase">${item.단위 || '-'}</td>
-                    <td class="py-4 px-4 whitespace-nowrap text-right font-bold text-slate-700">${(item.수량 || 0).toLocaleString()}</td>
-                    <td class="py-4 px-4 whitespace-nowrap text-right font-bold text-slate-600">₩${(item.단가 || 0).toLocaleString()}</td>
-                    <td class="py-4 px-4 whitespace-nowrap text-right font-black text-primary">₩${(item.금액 || 0).toLocaleString()}</td>
-                    <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-500 font-medium">${item.담당자 || '-'}</td>
-                    <td class="py-4 px-4 whitespace-nowrap font-mono text-xs text-slate-600">${item.연락처 || '-'}</td>
-                    <td class="py-4 px-4 whitespace-nowrap font-mono text-xs text-slate-500">${item.email || '-'}</td>
-                </tr>
-            `;
-        }).join('');
-
-        modal.style.display = 'flex';
-        modal.classList.remove('hidden');
-        requestAnimationFrame(() => {
-            modal.classList.add('opacity-100');
-            content.classList.add('translate-y-0');
+            if (filters.product) {
+                result = result.filter(d => d.품명1 === filters.product);
+            }
+            return result.reverse(); // 최신순 정렬
         });
-    }
 
-    function closeDocModal() {
-        const modal = document.getElementById('doc-modal');
-        const content = document.getElementById('doc-modal-content');
-        
-        modal.classList.remove('opacity-100');
-        content.classList.remove('translate-y-0');
-        setTimeout(() => { 
-            modal.style.display = 'none'; 
-            modal.classList.add('hidden');
-        }, 200);
+        const summary = computed(() => {
+            const count = displayedData.value.length;
+            const total = displayedData.value.reduce((sum, d) => sum + (d.금액 || 0), 0);
+            const priceSum = displayedData.value.reduce((sum, d) => sum + (d.실단가 || 0), 0);
+            const avg = count > 0 ? Math.round(priceSum / count) : 0;
+            const vendors = [...new Set(displayedData.value.map(d => d.구매처).filter(Boolean))].sort().join(', ');
+            return { count, total, avg, vendors: vendors || '-' };
+        });
+
+        // "전기 대비" 증감을 구하는 함수 (현재 표시 데이터가 최신순이므로 idx+1 이 이전 데이터)
+        const getDiff = (idx) => {
+            if (idx >= displayedData.value.length - 1) return null; // 가장 오래된 데이터는 비교대상이 없음
+            const current = displayedData.value[idx].실단가 || 0;
+            const prev = displayedData.value[idx + 1].실단가 || 0;
+            return current - prev;
+        };
+
+        const renderChart = () => {
+            if (!filters.product) return;
+            const dataToChart = [...displayedData.value].reverse(); // 차트는 과거->최신순
+            
+            nextTick(() => {
+                const canvas = document.getElementById('priceChart');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                if (chartInstance) chartInstance.destroy();
+
+                const prices = dataToChart.map(d => d.실단가 || 0);
+                const minPrice = Math.min(...prices);
+                const yMin = Math.floor(minPrice * 0.9);
+
+                Chart.defaults.font.family = "'Inter', sans-serif";
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dataToChart.map(d => d.작성일자),
+                        datasets: [{
+                            label: '실단가 (₩)',
+                            data: prices,
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderColor: '#3b82f6',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#fff',
+                            pointBorderColor: '#3b82f6',
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: true,
+                            tension: 0.2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1e293b', titleFont: { size: 13 },
+                                bodyFont: { size: 14, weight: 'bold' }, padding: 12, cornerRadius: 8,
+                                displayColors: false,
+                                callbacks: { label: (ctx) => '₩' + ctx.parsed.y.toLocaleString() }
+                            }
+                        },
+                        scales: {
+                            y: { min: yMin, grid: { color: '#f1f5f9' }, border: { display: false }, ticks: { color: '#64748b', font: { size: 11, weight: 'bold' }, callback: v => '₩' + v.toLocaleString() } },
+                            x: { grid: { display: false }, border: { display: false }, ticks: { color: '#64748b', font: { size: 11 } } }
+                        }
+                    }
+                });
+            });
+        };
+
+        watch(() => filters.product, () => {
+            if (filters.product) renderChart();
+        });
+
+        watch(displayedData, () => {
+            if (filters.product) renderChart();
+        }, { deep: true });
+
+        const openModal = (date) => {
+            modal.date = date;
+            modal.data = allData.value.filter(d => d.작성일자 === date);
+            modal.show = true;
+            nextTick(() => { modal.visible = true; });
+        };
+
+        const closeModal = () => {
+            modal.visible = false;
+            setTimeout(() => { modal.show = false; }, 200);
+        };
+
+        const loadData = async () => {
+            loading.value = true;
+            try {
+                const res = await fetch('/api/purchase/info');
+                const result = await res.json();
+                if (result.status === 'success') {
+                    allData.value = result.data;
+                    if (allData.value.length > 0) {
+                        const dates = allData.value.map(d => new Date(d.작성일자)).filter(d => !isNaN(d));
+                        const minDate = new Date(Math.min(...dates));
+                        const maxDate = new Date();
+                        filters.startDate = minDate.toISOString().split('T')[0];
+                        filters.endDate = maxDate.toISOString().split('T')[0];
+                    }
+                }
+            } catch (err) { console.error(err); }
+            finally {
+                setTimeout(() => { loading.value = false; }, 300);
+            }
+        };
+
+        onMounted(loadData);
+
+        return { 
+            loading, filters, availableProducts, displayedData, summary, 
+            getDiff, modal, openModal, closeModal 
+        };
     }
+}).mount('#vue-app');
 </script>
 {% endblock %}

@@ -5,6 +5,7 @@
 {% block title %}MES 통합 관리 시스템 - 생산가능수량 | Kinetic MES{% endblock %}
 
 {% block content %}
+<div id="vue-app">
 <!-- Page Header -->
 <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
@@ -30,101 +31,109 @@
                 <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-error"></div>불가</div>
             </div>
             
-            <button id="refresh-btn" class="bg-surface-container-low hover:bg-surface-container-highest text-slate-700 px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2 text-sm shadow-sm active:scale-95">
+            <button @click="loadProducible" class="bg-surface-container-low hover:bg-surface-container-highest text-slate-700 px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2 text-sm shadow-sm active:scale-95">
                 새로고침 <span class="material-symbols-outlined text-[16px]">refresh</span>
             </button>
         </div>
     </div>
 
     <!-- Data Grid -->
-    <div id="prod-grid" class="flex flex-col gap-6">
-        <div id="prod-loading" class="flex flex-col items-center justify-center py-16 gap-3">
+    <div class="flex flex-col gap-6">
+        <!-- Loading -->
+        <div v-if="loading" class="flex flex-col items-center justify-center py-16 gap-3">
             <span class="material-symbols-outlined text-primary text-4xl animate-spin">progress_activity</span>
             <span class="text-slate-500 font-medium tracking-widest uppercase text-sm">연산 중입니다...</span>
         </div>
+
+        <!-- Error -->
+        <div v-else-if="error" class="flex flex-col items-center justify-center py-16 gap-3">
+            <span class="material-symbols-outlined text-error text-4xl">error</span>
+            <span class="text-slate-500 font-bold mt-2">${ error }</span>
+        </div>
+
+        <!-- Data -->
+        <template v-else v-for="(items, key) in groupedData" :key="key">
+            <div class="flex items-center gap-3 pb-2 border-b border-surface-variant" :class="{ 'mt-6': Object.keys(groupedData).sort().indexOf(key) > 0 }">
+                <span class="bg-primary-fixed text-primary px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">${ key }</span>
+                <span class="text-sm font-bold text-slate-500">${ groupLabels[key] || key + ' 그룹' }</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mt-2">
+                <div v-for="row in items" :key="row.item_code"
+                     class="bg-white border-y border-r border-surface-container-highest rounded-xl p-4 flex flex-col gap-1.5 hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-default border-l-4"
+                     :class="kitBorderClass(row.max_kit)">
+                    <span class="bg-surface-container-low text-primary w-fit px-2 py-0.5 rounded text-[10px] font-mono font-bold">${ row.item_code || '-' }</span>
+                    <span class="text-sm font-bold text-on-surface truncate mt-1" :title="row.product_name || ''">${ row.product_name || '-' }</span>
+                    <span class="text-[10px] text-slate-400 font-medium">재고 <span class="text-slate-600 font-bold">${ (row.current_stock ?? 0).toLocaleString() }</span> ${ row.unit || '' }</span>
+                    <span class="text-2xl font-black mt-0.5" :class="kitTextClass(row.max_kit)">${ (row.max_kit ?? 0).toLocaleString() } <span class="text-[10px] text-slate-400 font-medium ml-0.5">kit</span></span>
+                </div>
+            </div>
+        </template>
     </div>
 </section>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-    const GROUP_LABELS = {
-        B: 'BCM — Breast Cancer Material',
-        C: 'CMA — Chemical Material',
-        E: 'EMA — Extra Material'
-    };
+const { createApp, ref, computed, onMounted } = Vue;
 
-    async function loadProducible() {
-        const grid = document.getElementById('prod-grid');
-        const loading = document.getElementById('prod-loading');
+createApp({
+    delimiters: ['${', '}'],
+    setup() {
+        const allData = ref([]);
+        const loading = ref(true);
+        const error = ref(null);
 
-        [...grid.children].forEach(el => { if (el !== loading) el.remove(); });
-        loading.style.display = 'flex';
+        const groupLabels = {
+            B: 'BCM — Breast Cancer Material',
+            C: 'CMA — Chemical Material',
+            E: 'EMA — Extra Material'
+        };
 
-        try {
-            const res = await fetch('/api/producible');
-            const result = await res.json();
-            loading.style.display = 'none';
+        const groupedData = computed(() => {
+            const groups = {};
+            allData.value.forEach(row => {
+                const key = (row.item_code ?? '').charAt(0).toUpperCase();
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(row);
+            });
+            return Object.keys(groups).sort().reduce((acc, k) => { acc[k] = groups[k]; return acc; }, {});
+        });
 
-            if (result.status === 'success') {
-                // 그룹화
-                const groups = {};
-                result.data.forEach(row => {
-                    const key = (row.item_code ?? '').charAt(0).toUpperCase();
-                    if (!groups[key]) groups[key] = [];
-                    groups[key].push(row);
-                });
-
-                Object.keys(groups).sort().forEach(key => {
-                    // 그룹 헤더
-                    const header = document.createElement('div');
-                    header.className = 'flex items-center gap-3 pb-2 border-b border-surface-variant mt-6';
-                    header.innerHTML = `<span class="bg-primary-fixed text-primary px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">${key}</span><span class="text-sm font-bold text-slate-500">${GROUP_LABELS[key] ?? key + ' 그룹'}</span>`;
-                    if (Object.keys(groups).sort().indexOf(key) === 0) header.classList.remove('mt-6');
-                    grid.appendChild(header);
-
-                    const cardContainer = document.createElement('div');
-                    cardContainer.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mt-2';
-
-                    // 카드 생성
-                    groups[key].forEach(row => {
-                        const kit = row.max_kit ?? 0;
-                        
-                        let borderClass = 'border-l-4 border-error hover:border-error';
-                        let textClass = 'text-error';
-                        
-                        if (kit >= 256) {
-                            borderClass = 'border-l-4 border-green-500 hover:border-green-600';
-                            textClass = 'text-green-600';
-                        } else if (kit >= 1) {
-                            borderClass = 'border-l-4 border-amber-500 hover:border-amber-600';
-                            textClass = 'text-amber-500';
-                        }
-
-                        const card = document.createElement('div');
-                        card.className = `bg-white border-y border-r border-surface-container-highest rounded-xl p-4 flex flex-col gap-1.5 hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-default ${borderClass}`;
-                        card.innerHTML = `
-                            <span class="bg-surface-container-low text-primary w-fit px-2 py-0.5 rounded text-[10px] font-mono font-bold">${row.item_code ?? '-'}</span>
-                            <span class="text-sm font-bold text-on-surface truncate mt-1" title="${row.product_name ?? ''}">${row.product_name ?? '-'}</span>
-                            <span class="text-[10px] text-slate-400 font-medium">재고 <span class="text-slate-600 font-bold">${(row.current_stock ?? 0).toLocaleString()}</span> ${row.unit ?? ''}</span>
-                            <span class="text-2xl font-black ${textClass} mt-0.5">${kit.toLocaleString()} <span class="text-[10px] text-slate-400 font-medium ml-0.5">kit</span></span>
-                        `;
-                        cardContainer.appendChild(card);
-                    });
-                    
-                    grid.appendChild(cardContainer);
-                });
-            } else {
-                loading.style.display = 'flex';
-                loading.innerHTML = `<span class="material-symbols-outlined text-error text-4xl">error</span><span class="text-error font-bold mt-2">${result.message}</span>`;
-            }
-        } catch (e) {
-            loading.style.display = 'flex';
-            loading.innerHTML = '<span class="material-symbols-outlined text-error text-4xl">error</span><span class="text-slate-500 font-bold mt-2">데이터를 불러올 수 없습니다.</span>';
+        function kitBorderClass(kit) {
+            if (kit >= 256) return 'border-green-500 hover:border-green-600';
+            if (kit >= 1) return 'border-amber-500 hover:border-amber-600';
+            return 'border-error hover:border-error';
         }
-    }
 
-    document.getElementById('refresh-btn').addEventListener('click', loadProducible);
-    loadProducible();
+        function kitTextClass(kit) {
+            if (kit >= 256) return 'text-green-600';
+            if (kit >= 1) return 'text-amber-500';
+            return 'text-error';
+        }
+
+        async function loadProducible() {
+            loading.value = true;
+            error.value = null;
+            try {
+                const res = await fetch('/api/producible');
+                const result = await res.json();
+                if (result.status === 'success') {
+                    allData.value = result.data;
+                } else {
+                    error.value = result.message;
+                }
+            } catch (e) {
+                error.value = '데이터를 불러올 수 없습니다.';
+            } finally {
+                loading.value = false;
+            }
+        }
+
+        onMounted(loadProducible);
+
+        return { allData, loading, error, groupLabels, groupedData, kitBorderClass, kitTextClass, loadProducible };
+    }
+}).mount('#vue-app');
 </script>
 {% endblock %}

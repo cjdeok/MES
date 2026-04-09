@@ -10,8 +10,9 @@
 {% endblock %}
 
 {% block content %}
+<div id="vue-app">
 <!-- Loading Overlay -->
-<div id="upload-loading" class="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-sm hidden flex-col justify-center items-center opacity-0 transition-opacity duration-200">
+<div v-if="isUploading" class="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-sm flex flex-col justify-center items-center transition-opacity duration-200">
     <span class="material-symbols-outlined text-white text-6xl animate-spin mb-4">progress_activity</span>
     <div class="text-white font-bold tracking-widest uppercase">업로드 중입니다...</div>
 </div>
@@ -29,50 +30,49 @@
 
 <!-- Upload Zone -->
 <section class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white mb-6">
-    <div class="border-2 border-dashed border-primary/40 hover:border-primary bg-primary/5 hover:bg-primary/10 rounded-2xl p-12 text-center transition-all cursor-pointer relative group" id="drop-zone">
+    <div v-show="!selectedFile" class="border-2 border-dashed border-primary/40 hover:border-primary bg-primary/5 hover:bg-primary/10 rounded-2xl p-12 text-center transition-all cursor-pointer relative group" @click="triggerFileInput" @dragenter.prevent="onDragEnter" @dragover.prevent="onDragEnter" @dragleave.prevent="onDragLeave" @drop.prevent="onDrop">
         <span class="material-symbols-outlined text-5xl text-primary opacity-80 mb-4 group-hover:scale-110 transition-transform">upload_file</span>
         <h3 class="text-lg font-bold text-slate-700 mb-2">여기에 엑셀 파일을 드래그하거나 클릭하여 파일 선택</h3>
         <p class="text-sm font-medium text-slate-500 mb-6 bg-white/50 px-4 py-2 rounded-lg inline-block">엑셀 양식: 원료코드 · 원료명 · Lot No · 사용일자 · 사용목적 · 사용량</p>
         <div>
-            <button class="bg-primary text-white font-bold px-6 py-2.5 rounded-lg flex items-center gap-2 mx-auto shadow-sm group-hover:shadow-md transition-shadow" id="browse-btn">
+            <button class="bg-primary text-white font-bold px-6 py-2.5 rounded-lg flex items-center gap-2 mx-auto shadow-sm group-hover:shadow-md transition-shadow" @click.stop="triggerFileInput">
                 <span class="material-symbols-outlined text-[20px]">folder_open</span> 파일 찾아보기
             </button>
-            <input type="file" class="hidden" id="file-input" accept=".xlsx">
+            <input type="file" class="hidden" ref="fileInputRef" accept=".xlsx" @change="onFileChange">
         </div>
     </div>
 
     <!-- Selected File Info -->
-    <div class="hidden items-center justify-between mt-6 bg-green-50/80 border border-green-200 p-4 rounded-xl" id="file-info">
+    <div v-if="selectedFile" class="flex items-center justify-between mt-6 bg-green-50/80 border border-green-200 p-4 rounded-xl">
         <div class="flex items-center gap-4">
             <div class="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-sm text-green-600">
                 <span class="material-symbols-outlined text-3xl">description</span>
             </div>
             <div>
-                <div class="font-bold text-green-800" id="file-name">-</div>
-                <div class="text-xs font-bold text-green-600/70" id="file-size-text">-</div>
+                <div class="font-bold text-green-800">${ selectedFile.name }</div>
+                <div class="text-xs font-bold text-green-600/70">${ formatBytes(selectedFile.size) }</div>
             </div>
         </div>
-        <button class="text-green-600/50 hover:text-green-700 hover:bg-green-100 p-2 rounded-lg transition-colors" id="remove-file-btn" title="파일 제거">
+        <button class="text-green-600/50 hover:text-green-700 hover:bg-green-100 p-2 rounded-lg transition-colors" @click="resetFile" title="파일 제거">
             <span class="material-symbols-outlined">close</span>
         </button>
     </div>
 </section>
 
 <!-- Result Banner -->
-<div class="hidden p-5 rounded-xl mb-6 shadow-sm border" id="result-banner">
-    <div class="flex items-center gap-3 font-bold text-lg mb-2" id="result-summary"></div>
-    <div class="text-sm space-y-1 pl-8" id="result-errors"></div>
+<div v-if="resultBanner.show" class="p-5 rounded-xl mb-6 shadow-sm border" :class="resultBanner.cls">
+    <div class="flex items-center gap-3 font-bold text-lg mb-2" v-html="resultBanner.summary"></div>
+    <div class="text-sm space-y-1 pl-8" v-html="resultBanner.errors"></div>
 </div>
 
 <!-- Preview Section -->
-<section class="hidden bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white mb-6" id="preview-section">
+<section v-if="previewRows.length > 0" class="bg-surface-container-lowest p-8 rounded-2xl cloud-shadow border border-white mb-6">
     <div class="flex justify-between items-center mb-6 border-b border-surface-variant pb-4">
         <h2 class="text-xl font-bold text-on-surface flex items-center gap-2">
             <span class="material-symbols-outlined text-primary">visibility</span> 업로드 데이터 미리보기
         </h2>
-        <span class="bg-primary/10 text-primary font-bold px-3 py-1 rounded-full text-sm shadow-sm" id="preview-count">0건</span>
+        <span class="bg-primary/10 text-primary font-bold px-3 py-1 rounded-full text-sm shadow-sm">${ previewRows.length }건</span>
     </div>
-    
     <div class="overflow-x-auto border border-surface-variant rounded-xl hide-scrollbar max-h-[400px]">
         <table class="w-full text-left border-collapse bg-white">
             <thead class="bg-surface-container-low sticky top-0 z-10">
@@ -86,13 +86,21 @@
                     <th class="py-3 px-4 whitespace-nowrap text-right">사용량</th>
                 </tr>
             </thead>
-            <tbody id="preview-body" class="text-sm divide-y divide-surface-container-low"></tbody>
+            <tbody class="text-sm divide-y divide-surface-container-low">
+                <tr v-for="(r, idx) in previewRows" :key="idx" class="hover:bg-slate-50 transition-colors">
+                    <td class="py-3 px-4 text-xs font-bold text-slate-400 text-center whitespace-nowrap">${ idx + 1 }</td>
+                    <td class="py-3 px-4 text-xs font-mono font-bold text-primary whitespace-nowrap bg-primary/5 rounded my-1 block w-fit ml-4 px-2">${ r[0] ?? '' }</td>
+                    <td class="py-3 px-4 font-bold text-slate-700">${ r[1] ?? '' }</td>
+                    <td class="py-3 px-4 text-xs font-mono text-slate-600 whitespace-nowrap">${ r[2] ?? '' }</td>
+                    <td class="py-3 px-4 text-xs text-slate-500 font-medium whitespace-nowrap">${ r[3] ?? '' }</td>
+                    <td class="py-3 px-4 text-xs text-slate-600 whitespace-nowrap">${ r[4] ?? '' }</td>
+                    <td class="py-3 px-4 text-right font-black text-error whitespace-nowrap">${ r[5] != null ? Number(r[5]).toLocaleString() : '' }</td>
+                </tr>
+            </tbody>
         </table>
     </div>
-
-    <!-- Upload Action Bar -->
-    <div class="flex justify-end mt-6 hidden" id="action-bar">
-        <button class="bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3.5 rounded-xl flex items-center gap-3 transition-all active:scale-95 shadow-md shadow-green-600/20 disabled:opacity-50 disabled:cursor-not-allowed" id="upload-btn">
+    <div class="flex justify-end mt-6">
+        <button class="bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3.5 rounded-xl flex items-center gap-3 transition-all active:scale-95 shadow-md shadow-green-600/20 disabled:opacity-50 disabled:cursor-not-allowed" @click="executeUpload" :disabled="isUploading">
             <span class="material-symbols-outlined">send</span> 업로드 실행
         </button>
     </div>
@@ -104,11 +112,10 @@
         <h2 class="text-xl font-bold text-on-surface flex items-center gap-2 text-slate-600">
             <span class="material-symbols-outlined">history</span> 최근 출고 이력
         </h2>
-        <button class="bg-white border border-surface-variant text-slate-600 hover:text-primary hover:border-primary font-bold px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all shadow-sm text-xs" id="refresh-history">
+        <button class="bg-white border border-surface-variant text-slate-600 hover:text-primary hover:border-primary font-bold px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all shadow-sm text-xs" @click="loadHistory">
             <span class="material-symbols-outlined text-[16px]">refresh</span> 새로고침
         </button>
     </div>
-    
     <div class="overflow-x-auto border border-surface-variant rounded-xl hide-scrollbar max-h-[400px]">
         <table class="w-full text-left border-collapse bg-white">
             <thead class="bg-surface-container-low sticky top-0 z-10">
@@ -122,222 +129,129 @@
                     <th class="py-3 px-4 text-right whitespace-nowrap">사용량</th>
                 </tr>
             </thead>
-            <tbody id="history-body" class="text-sm divide-y divide-surface-container-low">
-                <tr><td colspan="7" class="text-center py-12 text-slate-400 font-medium"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 불러오는 중...</td></tr>
+            <tbody class="text-sm divide-y divide-surface-container-low">
+                <tr v-if="historyLoading"><td colspan="7" class="text-center py-12 text-slate-400 font-medium"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 불러오는 중...</td></tr>
+                <tr v-else-if="historyData.length === 0"><td colspan="7" class="text-center py-12 text-slate-400 font-medium"><span class="material-symbols-outlined text-4xl opacity-50">inbox</span><br>출고 이력이 없습니다.</td></tr>
+                <tr v-else v-for="r in historyData" :key="r.id" class="hover:bg-slate-50 transition-colors bg-white">
+                    <td class="py-3 px-4 text-[10px] uppercase tracking-widest font-bold text-slate-400 whitespace-nowrap">${ r.id }</td>
+                    <td class="py-3 px-4 text-xs font-mono font-bold text-primary whitespace-nowrap bg-primary/5 rounded my-1 block w-fit ml-4 px-2">${ r.item_code ?? '' }</td>
+                    <td class="py-3 px-4 font-bold text-slate-700 min-w-[200px]">${ r.product_name ?? '' }</td>
+                    <td class="py-3 px-4 text-xs font-mono text-slate-600 whitespace-nowrap">${ r.lot_no ?? '' }</td>
+                    <td class="py-3 px-4 text-center text-xs text-slate-500 font-medium whitespace-nowrap">${ r.transaction_date ?? '' }</td>
+                    <td class="py-3 px-4 text-xs text-slate-600 whitespace-nowrap">${ r.purpose ?? '' }</td>
+                    <td class="py-3 px-4 text-right font-black text-rose-600 whitespace-nowrap">${ r.quantity != null ? Number(r.quantity).toLocaleString() : '' }</td>
+                </tr>
             </tbody>
         </table>
     </div>
 </section>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-    // ── Elements ──
-    const dropZone = document.getElementById('drop-zone');
-    const fileInput = document.getElementById('file-input');
-    const browseBtn = document.getElementById('browse-btn');
-    const fileInfoEl = document.getElementById('file-info');
-    const fileNameEl = document.getElementById('file-name');
-    const fileSizeEl = document.getElementById('file-size-text');
-    const removeBtn = document.getElementById('remove-file-btn');
-    const previewSection = document.getElementById('preview-section');
-    const previewBody = document.getElementById('preview-body');
-    const previewCount = document.getElementById('preview-count');
-    const actionBar = document.getElementById('action-bar');
-    const uploadBtn = document.getElementById('upload-btn');
-    const resultBanner = document.getElementById('result-banner');
-    const resultSummary = document.getElementById('result-summary');
-    const resultErrors = document.getElementById('result-errors');
-    const loadingOverlay = document.getElementById('upload-loading');
-    const historyBody = document.getElementById('history-body');
+    const { createApp, ref, onMounted } = Vue;
 
-    let selectedFile = null;
-
-    // ── Drag & Drop ──
-    ['dragenter', 'dragover'].forEach(e => {
-        dropZone.addEventListener(e, ev => { 
-            ev.preventDefault(); 
-            dropZone.classList.add('border-primary', 'bg-primary/10'); 
-            dropZone.classList.remove('border-primary/40', 'bg-primary/5');
-        });
-    });
-    ['dragleave', 'drop'].forEach(e => {
-        dropZone.addEventListener(e, ev => { 
-            ev.preventDefault(); 
-            dropZone.classList.remove('border-primary', 'bg-primary/10'); 
-            dropZone.classList.add('border-primary/40', 'bg-primary/5');
-        });
-    });
-    dropZone.addEventListener('drop', ev => {
-        const file = ev.dataTransfer.files[0];
-        if (file) handleFile(file);
-    });
-    browseBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        fileInput.click();
-    });
-    dropZone.addEventListener('click', () => fileInput.click()); // 구역 전체 클릭 허용
-    fileInput.addEventListener('change', () => {
-        if (fileInput.files[0]) handleFile(fileInput.files[0]);
-    });
-    removeBtn.addEventListener('click', resetFile);
-
-    // ── Handle file selection ──
-    function handleFile(file) {
-        if (!file.name.endsWith('.xlsx')) {
-            alert('.xlsx 파일만 업로드 가능합니다.');
-            return;
-        }
-        selectedFile = file;
-        fileNameEl.textContent = file.name;
-        fileSizeEl.textContent = formatBytes(file.size);
-        fileInfoEl.classList.remove('hidden');
-        fileInfoEl.classList.add('flex');
-        resultBanner.classList.add('hidden');
-        dropZone.classList.add('hidden'); // Dropzone 숨기기 시작
-        parsePreview(file);
-    }
-
-    function resetFile() {
-        selectedFile = null;
-        fileInput.value = '';
-        fileInfoEl.classList.add('hidden');
-        fileInfoEl.classList.remove('flex');
-        previewSection.classList.add('hidden');
-        actionBar.classList.add('hidden');
-        dropZone.classList.remove('hidden'); // Dropzone 다시 보이기
-        previewBody.innerHTML = '';
-        resultBanner.classList.add('hidden');
-    }
-
-    function formatBytes(bytes) {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / 1048576).toFixed(1) + ' MB';
-    }
-
-    // ── Preview with SheetJS ──
-    function parsePreview(file) {
-        const reader = new FileReader();
-        reader.onload = e => {
-            try {
-                const wb = XLSX.read(e.target.result, { type: 'array' });
-                const ws = wb.Sheets[wb.SheetNames[0]];
-                const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
-
-                previewSection.classList.remove('hidden');
-
-                if (data.length < 2) {
-                    previewBody.innerHTML = '<tr><td colspan="7" class="text-center py-12 text-slate-400 font-medium">데이터가 없습니다.</td></tr>';
-                    actionBar.classList.add('hidden');
-                    return;
-                }
-
-                const rows = data.slice(1).filter(r => r.length > 0 && r[0]);
-                previewCount.textContent = rows.length + '건';
-
-                previewBody.innerHTML = rows.map((r, i) => `
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="py-3 px-4 text-xs font-bold text-slate-400 text-center whitespace-nowrap">${i + 1}</td>
-                        <td class="py-3 px-4 text-xs font-mono font-bold text-primary whitespace-nowrap bg-primary/5 rounded my-1 block w-fit ml-4 px-2">${r[0] ?? ''}</td>
-                        <td class="py-3 px-4 font-bold text-slate-700">${r[1] ?? ''}</td>
-                        <td class="py-3 px-4 text-xs font-mono text-slate-600 whitespace-nowrap">${r[2] ?? ''}</td>
-                        <td class="py-3 px-4 text-xs text-slate-500 font-medium whitespace-nowrap">${r[3] ?? ''}</td>
-                        <td class="py-3 px-4 text-xs text-slate-600 whitespace-nowrap">${r[4] ?? ''}</td>
-                        <td class="py-3 px-4 text-right font-black text-error whitespace-nowrap">${r[5] != null ? Number(r[5]).toLocaleString() : ''}</td>
-                    </tr>
-                `).join('');
-
-                actionBar.classList.remove('hidden');
-            } catch (err) {
-                alert('파일 파싱 중 오류: ' + err.message);
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
-    // ── Upload ──
-    uploadBtn.addEventListener('click', async () => {
-        if (!selectedFile) return;
-
-        uploadBtn.disabled = true;
-        loadingOverlay.classList.remove('hidden');
-        loadingOverlay.classList.add('flex');
-        
-        requestAnimationFrame(() => { loadingOverlay.classList.replace('opacity-0', 'opacity-100'); });
-
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-
-        try {
-            const res = await fetch('/api/usage/upload', { method: 'POST', body: formData });
-            const result = await res.json();
-
-            loadingOverlay.classList.replace('opacity-100', 'opacity-0');
-            setTimeout(() => { loadingOverlay.classList.remove('flex'); loadingOverlay.classList.add('hidden'); }, 200);
+    createApp({
+        delimiters: ['${', '}'],
+        setup() {
+            const fileInputRef = ref(null);
+            const selectedFile = ref(null);
+            const previewRows = ref([]);
+            const isUploading = ref(false);
+            const resultBanner = ref({ show: false, cls: '', summary: '', errors: '' });
             
-            resultBanner.classList.remove('hidden');
+            const historyData = ref([]);
+            const historyLoading = ref(true);
 
-            if (result.status === 'success') {
-                resultBanner.className = 'p-5 rounded-xl mb-6 shadow-sm border bg-green-50 border-green-200 text-green-800';
-                resultSummary.innerHTML = `<span class="material-symbols-outlined text-green-600">check_circle</span> ${result.success_count}건 업로드 성공` +
-                    (result.error_count > 0 ? `, ${result.error_count}건 오류` : '');
+            const formatBytes = (bytes) => {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / 1048576).toFixed(1) + ' MB';
+            };
 
-                if (result.errors && result.errors.length > 0) {
-                    resultErrors.innerHTML = result.errors.map(e => `<p class="flex items-start gap-1"><span class="material-symbols-outlined text-[16px] text-error">error</span> ${e}</p>`).join('');
-                } else {
-                    resultErrors.innerHTML = '';
+            const triggerFileInput = () => fileInputRef.value?.click();
+
+            const handleFile = (file) => {
+                if (!file.name.endsWith('.xlsx')) { alert('.xlsx 파일만 업로드 가능합니다.'); return; }
+                selectedFile.value = file;
+                resultBanner.value.show = false;
+                parsePreview(file);
+            };
+
+            const onFileChange = (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); };
+            const onDragEnter = () => {};
+            const onDragLeave = () => {};
+            const onDrop = (e) => { const file = e.dataTransfer.files[0]; if (file) handleFile(file); };
+
+            const resetFile = () => {
+                selectedFile.value = null;
+                previewRows.value = [];
+                if (fileInputRef.value) fileInputRef.value.value = '';
+            };
+
+            const parsePreview = (file) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const wb = XLSX.read(e.target.result, { type: 'array' });
+                        const ws = wb.Sheets[wb.SheetNames[0]];
+                        const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                        if (data.length < 2) { previewRows.value = []; return; }
+                        previewRows.value = data.slice(1).filter(r => r.length > 0 && r[0]);
+                    } catch (err) { alert('파일 파싱 중 오류: ' + err.message); }
+                };
+                reader.readAsArrayBuffer(file);
+            };
+
+            const executeUpload = async () => {
+                if (!selectedFile.value) return;
+                isUploading.value = true;
+                const formData = new FormData();
+                formData.append('file', selectedFile.value);
+
+                try {
+                    const res = await fetch('/api/usage/upload', { method: 'POST', body: formData });
+                    const result = await res.json();
+
+                    if (result.status === 'success') {
+                        resultBanner.value = {
+                            show: true,
+                            cls: 'bg-green-50 border-green-200 text-green-800',
+                            summary: `<span class="material-symbols-outlined text-green-600">check_circle</span> ${result.success_count}건 업로드 성공` + (result.error_count > 0 ? `, ${result.error_count}건 오류` : ''),
+                            errors: (result.errors && result.errors.length > 0) ? result.errors.map(e => `<p class="flex items-start gap-1"><span class="material-symbols-outlined text-[16px] text-error">error</span> ${e}</p>`).join('') : ''
+                        };
+                        resetFile();
+                        loadHistory();
+                    } else {
+                        resultBanner.value = { show: true, cls: 'bg-error-container text-on-error-container border-error/30', summary: `<span class="material-symbols-outlined text-error">warning</span> ${result.message}`, errors: '' };
+                    }
+                } catch {
+                    resultBanner.value = { show: true, cls: 'bg-error-container text-on-error-container border-error/30', summary: `<span class="material-symbols-outlined text-error">warning</span> 서버 연결 오류`, errors: '' };
+                } finally {
+                    isUploading.value = false;
                 }
+            };
 
-                resetFile();
-                loadHistory();
-            } else {
-                resultBanner.className = 'p-5 rounded-xl mb-6 shadow-sm border bg-error-container text-on-error-container border-error/30';
-                resultSummary.innerHTML = `<span class="material-symbols-outlined text-error">warning</span> ${result.message}`;
-                resultErrors.innerHTML = '';
-            }
-        } catch (err) {
-            loadingOverlay.classList.replace('opacity-100', 'opacity-0');
-            setTimeout(() => { loadingOverlay.classList.remove('flex'); loadingOverlay.classList.add('hidden'); }, 200);
-            
-            resultBanner.className = 'p-5 rounded-xl mb-6 shadow-sm border bg-error-container text-on-error-container border-error/30';
-            resultBanner.classList.remove('hidden');
-            resultSummary.innerHTML = `<span class="material-symbols-outlined text-error">warning</span> 서버 연결 오류`;
-            resultErrors.innerHTML = '';
+            const loadHistory = async () => {
+                historyLoading.value = true;
+                try {
+                    const res = await fetch('/api/usage/recent');
+                    const result = await res.json();
+                    historyData.value = (result.status === 'success' && result.data.length > 0) ? result.data : [];
+                } catch { historyData.value = []; }
+                finally { historyLoading.value = false; }
+            };
+
+            onMounted(() => loadHistory());
+
+            return {
+                fileInputRef, selectedFile, previewRows, isUploading, resultBanner,
+                historyData, historyLoading,
+                formatBytes, triggerFileInput, onFileChange, onDragEnter, onDragLeave, onDrop,
+                resetFile, executeUpload, loadHistory
+            };
         }
-
-        uploadBtn.disabled = false;
-    });
-
-    // ── Recent History ──
-    async function loadHistory() {
-        historyBody.innerHTML = '<tr><td colspan="7" class="text-center py-12 text-slate-400 font-medium"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 불러오는 중...</td></tr>';
-
-        try {
-            const res = await fetch('/api/usage/recent');
-            const result = await res.json();
-
-            if (result.status === 'success' && result.data.length > 0) {
-                historyBody.innerHTML = result.data.map(r => `
-                    <tr class="hover:bg-slate-50 transition-colors bg-white">
-                        <td class="py-3 px-4 text-[10px] uppercase tracking-widest font-bold text-slate-400 whitespace-nowrap">${r.id}</td>
-                        <td class="py-3 px-4 text-xs font-mono font-bold text-primary whitespace-nowrap bg-primary/5 rounded my-1 block w-fit ml-4 px-2">${r.item_code ?? ''}</td>
-                        <td class="py-3 px-4 font-bold text-slate-700 min-w-[200px]">${r.product_name ?? ''}</td>
-                        <td class="py-3 px-4 text-xs font-mono text-slate-600 whitespace-nowrap">${r.lot_no ?? ''}</td>
-                        <td class="py-3 px-4 text-center text-xs text-slate-500 font-medium whitespace-nowrap">${r.transaction_date ?? ''}</td>
-                        <td class="py-3 px-4 text-xs text-slate-600 whitespace-nowrap">${r.purpose ?? ''}</td>
-                        <td class="py-3 px-4 text-right font-black text-rose-600 whitespace-nowrap">${r.quantity != null ? Number(r.quantity).toLocaleString() : ''}</td>
-                    </tr>
-                `).join('');
-            } else {
-                historyBody.innerHTML = '<tr><td colspan="7" class="text-center py-12 text-slate-400 font-medium flex flex-col items-center justify-center gap-2"><span class="material-symbols-outlined text-4xl opacity-50">inbox</span> 출고 이력이 없습니다.</td></tr>';
-            }
-        } catch {
-            historyBody.innerHTML = '<tr><td colspan="7" class="text-center py-12 text-error font-medium flex flex-col items-center justify-center gap-2"><span class="material-symbols-outlined text-4xl opacity-80">error</span> 데이터를 불러올 수 없습니다.</td></tr>';
-        }
-    }
-
-    document.getElementById('refresh-history').addEventListener('click', loadHistory);
-    loadHistory();
+    }).mount('#vue-app');
 </script>
 {% endblock %}

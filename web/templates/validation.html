@@ -5,6 +5,7 @@
 {% block title %}MES 통합 관리 시스템 - 밸리데이션 계획 | Kinetic MES{% endblock %}
 
 {% block content %}
+<div id="vue-app">
 <!-- Page Header -->
 <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
@@ -25,11 +26,12 @@
         </h2>
         
         <!-- Filter Tabs -->
-        <div class="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg" id="filter-tabs">
-            <button class="filter-tab px-4 py-1.5 rounded-md text-sm font-bold bg-white shadow-sm text-primary transition-all active-tab" data-filter="all">전체</button>
-            <button class="filter-tab px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all" data-filter="1">1개월 이내 <span class="bg-error-container text-on-error-container text-[10px] px-1.5 py-0.5 rounded ml-1">Urgent</span></button>
-            <button class="filter-tab px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all" data-filter="3">3개월 이내</button>
-            <button class="filter-tab px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all" data-filter="6">6개월 이내</button>
+        <div class="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg">
+            <button v-for="tab in filterTabs" :key="tab.value"
+                    @click="currentFilter = tab.value"
+                    class="filter-tab px-4 py-1.5 rounded-md text-sm font-bold transition-all"
+                    :class="currentFilter === tab.value ? 'bg-white shadow-sm text-primary' : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'"
+                    v-html="tab.label"></button>
         </div>
     </div>
 
@@ -49,120 +51,110 @@
                     <th class="py-3 px-4 text-center">임박 상태</th>
                 </tr>
             </thead>
-            <tbody id="plan-tbody" class="text-sm divide-y divide-surface-container-low">
-                <tr><td colspan="9" class="text-center py-12 text-slate-400 font-medium"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 데이터를 불러오는 중입니다...</td></tr>
+            <tbody class="text-sm divide-y divide-surface-container-low">
+                <tr v-if="loading"><td colspan="9" class="text-center py-12 text-slate-400 font-medium"><span class="material-symbols-outlined animate-spin align-middle mr-2">progress_activity</span> 데이터를 불러오는 중입니다...</td></tr>
+                <tr v-else-if="filteredData.length === 0"><td colspan="9" class="text-center py-12 text-slate-400 font-medium">해당 조건에 맞는 계획이 없습니다.</td></tr>
+                <tr v-else v-for="item in filteredData" :key="item.no" class="hover:bg-slate-50 transition-colors" :class="getRowWarnClass(item)">
+                    <td class="py-4 px-4 text-xs font-mono text-slate-400 font-bold whitespace-nowrap">${ item.no }</td>
+                    <td class="py-4 px-4 font-bold text-slate-700 min-w-[200px]">${ item.target_name }</td>
+                    <td class="py-4 px-4 text-xs text-primary font-mono font-bold whitespace-nowrap">${ item.equipment_no }</td>
+                    <td class="py-4 px-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 whitespace-nowrap">${ item.validation_cycle }</td>
+                    <td class="py-4 px-4 text-center whitespace-nowrap"><span class="bg-slate-100 text-slate-500 px-2 py-1 rounded-full text-[10px] font-bold shadow-sm">${ item.safety_grade }</span></td>
+                    <td class="py-4 px-4 text-xs font-medium text-slate-500 whitespace-nowrap">${ item.last_inspection_date }</td>
+                    <td class="py-4 px-4 text-sm whitespace-nowrap" :class="getDateColorClass(item)">${ item.next_plan_date }</td>
+                    <td class="py-4 px-4 text-center whitespace-nowrap text-xs font-medium text-slate-600">${ item.performer }</td>
+                    <td class="py-4 px-4 text-center whitespace-nowrap" v-html="getStatusHtml(item)"></td>
+                </tr>
             </tbody>
         </table>
     </div>
 </section>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-    let allData = [];
-    let currentFilter = 'all';
+const { createApp, ref, computed, onMounted } = Vue;
 
-    async function fetchPlan() {
-        try {
-            const res = await fetch('/api/validation/plan');
-            const result = await res.json();
-            if (result.status === 'success') {
-                allData = result.data;
-                renderTable();
-            }
-        } catch (err) {
-            document.getElementById('plan-tbody').innerHTML = '<tr><td colspan="9" class="text-center py-12 text-error font-medium">데이터를 불러올 수 없습니다.</td></tr>';
-            console.error("Fetch Error:", err);
+createApp({
+    delimiters: ['${', '}'],
+    setup() {
+        const allData = ref([]);
+        const loading = ref(true);
+        const currentFilter = ref('all');
+
+        const filterTabs = [
+            { value: 'all', label: '전체' },
+            { value: '1', label: '1개월 이내 <span class="bg-error-container text-on-error-container text-[10px] px-1.5 py-0.5 rounded ml-1">Urgent</span>' },
+            { value: '3', label: '3개월 이내' },
+            { value: '6', label: '6개월 이내' }
+        ];
+
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+            const match = dateStr.match(/\d{4}\.\d{2}\.\d{2}/);
+            if (match) return new Date(match[0].replace(/\./g, '-'));
+            return null;
         }
-    }
 
-    function parseDate(dateStr) {
-        if (!dateStr) return null;
-        // "2026.11.05 이내" -> "2026.11.05"
-        const match = dateStr.match(/\d{4}\.\d{2}\.\d{2}/);
-        if (match) {
-            return new Date(match[0].replace(/\./g, '-'));
-        }
-        return null;
-    }
-
-    function renderTable() {
-        const tbody = document.getElementById('plan-tbody');
-        tbody.innerHTML = '';
-
-        const now = new Date();
-        
-        const filteredData = allData.filter(item => {
-            if (currentFilter === 'all') return true;
-            
+        function getDaysDiff(item) {
             const planDate = parseDate(item.next_plan_date);
-            if (!planDate) return false;
-            
-            const monthsDiff = (planDate - now) / (1000 * 60 * 60 * 24 * 30);
-            return monthsDiff <= parseInt(currentFilter) && monthsDiff >= -1; 
-        });
-
-        if (filteredData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-12 text-slate-400 font-medium">해당 조건에 맞는 계획이 없습니다.</td></tr>';
-            return;
+            if (!planDate) return null;
+            return Math.ceil((planDate - new Date()) / (1000 * 60 * 60 * 24));
         }
 
-        filteredData.forEach(item => {
-            const tr = document.createElement('tr');
-            tr.className = "hover:bg-slate-50 transition-colors";
-            
-            const planDate = parseDate(item.next_plan_date);
-            let statusHtml = '';
-            let dateColorClass = 'text-slate-600';
-            let rowWarnClass = '';
-
-            if (planDate) {
-                const daysDiff = Math.ceil((planDate - now) / (1000 * 60 * 60 * 24));
-                if (daysDiff <= 30) {
-                    statusHtml = '<span class="bg-error-container text-on-error-container px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">warning</span> 1개월 이내</span>';
-                    dateColorClass = 'text-error font-black';
-                    rowWarnClass = 'bg-error-container/10';
-                } else if (daysDiff <= 90) {
-                    statusHtml = '<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">schedule</span> 3개월 이내</span>';
-                    dateColorClass = 'text-amber-600 font-bold';
-                } else if (daysDiff <= 180) {
-                    statusHtml = '<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">check_circle</span> 6개월 이내</span>';
-                } else {
-                    statusHtml = '<span class="bg-surface-container-low text-slate-400 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1 w-fit mx-auto">안정</span>';
-                }
-            } else {
-                statusHtml = '<span class="bg-surface-container-low text-slate-400 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest w-fit mx-auto block">정보없음</span>';
-            }
-
-            if (rowWarnClass) tr.classList.add(rowWarnClass.split('/')[0], 'bg-opacity-10'); // fallback but tailwind handles it
-
-            tr.innerHTML = `
-                <td class="py-4 px-4 text-xs font-mono text-slate-400 font-bold whitespace-nowrap">${item.no}</td>
-                <td class="py-4 px-4 font-bold text-slate-700 min-w-[200px]">${item.target_name}</td>
-                <td class="py-4 px-4 text-xs text-primary font-mono font-bold whitespace-nowrap">${item.equipment_no}</td>
-                <td class="py-4 px-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 whitespace-nowrap">${item.validation_cycle}</td>
-                <td class="py-4 px-4 text-center whitespace-nowrap"><span class="bg-slate-100 text-slate-500 px-2 py-1 rounded-full text-[10px] font-bold shadow-sm">${item.safety_grade}</span></td>
-                <td class="py-4 px-4 text-xs font-medium text-slate-500 whitespace-nowrap">${item.last_inspection_date}</td>
-                <td class="py-4 px-4 text-sm ${dateColorClass} whitespace-nowrap">${item.next_plan_date}</td>
-                <td class="py-4 px-4 text-center whitespace-nowrap text-xs font-medium text-slate-600">${item.performer}</td>
-                <td class="py-4 px-4 text-center whitespace-nowrap">${statusHtml}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    document.getElementById('filter-tabs').addEventListener('click', (e) => {
-        const tab = e.target.closest('.filter-tab');
-        if (tab) {
-            document.querySelectorAll('.filter-tab').forEach(t => {
-                t.className = 'filter-tab px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/50 transition-all';
+        const filteredData = computed(() => {
+            const now = new Date();
+            return allData.value.filter(item => {
+                if (currentFilter.value === 'all') return true;
+                const planDate = parseDate(item.next_plan_date);
+                if (!planDate) return false;
+                const monthsDiff = (planDate - now) / (1000 * 60 * 60 * 24 * 30);
+                return monthsDiff <= parseInt(currentFilter.value) && monthsDiff >= -1;
             });
-            tab.className = 'filter-tab px-4 py-1.5 rounded-md text-sm font-bold bg-white shadow-sm text-primary transition-all active-tab';
-            currentFilter = tab.dataset.filter;
-            renderTable();
-        }
-    });
+        });
 
-    fetchPlan();
+        function getStatusHtml(item) {
+            const days = getDaysDiff(item);
+            if (days === null) return '<span class="bg-surface-container-low text-slate-400 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest w-fit mx-auto block">정보없음</span>';
+            if (days <= 30) return '<span class="bg-error-container text-on-error-container px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">warning</span> 1개월 이내</span>';
+            if (days <= 90) return '<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">schedule</span> 3개월 이내</span>';
+            if (days <= 180) return '<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[14px]">check_circle</span> 6개월 이내</span>';
+            return '<span class="bg-surface-container-low text-slate-400 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1 w-fit mx-auto">안정</span>';
+        }
+
+        function getDateColorClass(item) {
+            const days = getDaysDiff(item);
+            if (days === null) return 'text-slate-600';
+            if (days <= 30) return 'text-error font-black';
+            if (days <= 90) return 'text-amber-600 font-bold';
+            return 'text-slate-600';
+        }
+
+        function getRowWarnClass(item) {
+            const days = getDaysDiff(item);
+            if (days !== null && days <= 30) return 'bg-error-container/10';
+            return '';
+        }
+
+        async function fetchPlan() {
+            try {
+                const res = await fetch('/api/validation/plan');
+                const result = await res.json();
+                if (result.status === 'success') {
+                    allData.value = result.data;
+                }
+            } catch (err) {
+                console.error("Fetch Error:", err);
+            } finally {
+                loading.value = false;
+            }
+        }
+
+        onMounted(fetchPlan);
+
+        return { allData, loading, currentFilter, filterTabs, filteredData, getStatusHtml, getDateColorClass, getRowWarnClass };
+    }
+}).mount('#vue-app');
 </script>
 {% endblock %}

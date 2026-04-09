@@ -5,6 +5,7 @@
 {% block title %}MES 원료상세검색 | Kinetic MES{% endblock %}
 
 {% block content %}
+<div id="vue-app">
 <!-- Page Header -->
 <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
@@ -23,28 +24,30 @@
     </h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div class="flex flex-col gap-2">
-            <label for="material-select" class="text-xs font-bold text-slate-500 uppercase tracking-widest">원부자재 선택</label>
-            <select id="material-select" class="w-full bg-surface-container-low border-2 border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">원부자재 선택</label>
+            <select v-model="selectedMaterial" @change="onMaterialChange" class="w-full bg-surface-container-low border-2 border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none">
                 <option value="">원료를 선택하세요...</option>
+                <option v-for="m in materials" :key="m.code" :value="m.code">${ m.code } (${ m.name })</option>
             </select>
         </div>
         <div class="flex flex-col gap-2">
-            <label for="lot-select" class="text-xs font-bold text-slate-500 uppercase tracking-widest">Lot 번호 선택</label>
-            <select id="lot-select" class="w-full bg-surface-container-low border-2 border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest">Lot 번호 선택</label>
+            <select v-model="selectedLot" @change="onLotChange" :disabled="lots.length === 0" class="w-full bg-surface-container-low border-2 border-transparent focus:border-primary focus:bg-white rounded-lg px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed">
                 <option value="">Lot 번호를 선택하세요...</option>
+                <option v-for="lot in lots" :key="lot" :value="lot">${ lot }</option>
             </select>
         </div>
     </div>
 </section>
 
 <!-- Loading Spinner -->
-<div id="loading" class="hidden flex-col items-center justify-center py-20 bg-surface-container-lowest rounded-2xl cloud-shadow border border-white mb-8">
+<div v-if="isLoading" class="flex flex-col items-center justify-center py-20 bg-surface-container-lowest rounded-2xl cloud-shadow border border-white mb-8">
     <span class="material-symbols-outlined text-primary text-5xl animate-spin">progress_activity</span>
     <p class="mt-4 text-primary font-bold text-sm tracking-widest uppercase">데이터를 불러오는 중입니다...</p>
 </div>
 
 <!-- Empty State -->
-<div id="empty-state" class="bg-surface-container-low/30 rounded-2xl p-20 flex flex-col items-center justify-center text-center border-2 border-dashed border-slate-300">
+<div v-if="!isLoading && !showResults" class="bg-surface-container-low/30 rounded-2xl p-20 flex flex-col items-center justify-center text-center border-2 border-dashed border-slate-300">
     <div class="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-4 cloud-shadow">
         <span class="material-symbols-outlined text-3xl text-slate-400">youtube_searched_for</span>
     </div>
@@ -53,7 +56,7 @@
 </div>
 
 <!-- Results Section -->
-<section id="results-section" class="hidden space-y-6">
+<section v-if="showResults" class="space-y-6">
     <!-- Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-surface-container-lowest border-l-4 border-green-500 border-y border-r border-white p-6 rounded-xl cloud-shadow flex items-center gap-5">
@@ -62,7 +65,7 @@
             </div>
             <div>
                 <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">총 입고량</h3>
-                <p id="total-in" class="text-3xl font-black text-slate-800">0</p>
+                <p class="text-3xl font-black text-slate-800">${ summary.total_in.toLocaleString() }</p>
             </div>
         </div>
         <div class="bg-surface-container-lowest border-l-4 border-error border-y border-r border-white p-6 rounded-xl cloud-shadow flex items-center gap-5">
@@ -71,7 +74,7 @@
             </div>
             <div>
                 <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">총 출고량</h3>
-                <p id="total-out" class="text-3xl font-black text-slate-800">0</p>
+                <p class="text-3xl font-black text-slate-800">${ summary.total_out.toLocaleString() }</p>
             </div>
         </div>
         <div class="bg-primary-fixed border border-primary-fixed p-6 rounded-xl cloud-shadow flex items-center gap-5">
@@ -80,18 +83,18 @@
             </div>
             <div>
                 <h3 class="text-xs font-bold text-slate-600 uppercase tracking-widest mb-1">현재고</h3>
-                <p id="current-stock" class="text-3xl font-black text-primary">0</p>
+                <p class="text-3xl font-black text-primary">${ summary.current_stock.toLocaleString() }</p>
             </div>
         </div>
     </div>
 
     <!-- Material Details Panel -->
-    <div id="material-info-panel" class="hidden bg-surface-container-lowest p-6 rounded-xl cloud-shadow border border-white flex flex-wrap gap-8 justify-around items-center">
+    <div v-if="materialDetails" class="bg-surface-container-lowest p-6 rounded-xl cloud-shadow border border-white flex flex-wrap gap-8 justify-around items-center">
         <div class="flex items-center gap-4">
             <span class="material-symbols-outlined text-3xl text-slate-400">calendar_add_on</span>
             <div class="flex flex-col">
                 <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest">입고일</h4>
-                <span id="info-receive-date" class="text-sm font-bold text-slate-700">-</span>
+                <span class="text-sm font-bold text-slate-700">${ materialDetails.receive_date || '-' }</span>
             </div>
         </div>
         <div class="h-10 w-px bg-surface-variant hidden md:block"></div>
@@ -99,7 +102,7 @@
             <span class="material-symbols-outlined text-3xl text-primary">biotech</span>
             <div class="flex flex-col">
                 <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Q.C. 일자</h4>
-                <span id="info-qc-date" class="text-sm font-bold text-slate-700">-</span>
+                <span class="text-sm font-bold text-slate-700">${ materialDetails.qc_date || '-' }</span>
             </div>
         </div>
         <div class="h-10 w-px bg-surface-variant hidden md:block"></div>
@@ -107,7 +110,7 @@
             <span class="material-symbols-outlined text-3xl text-error">event_busy</span>
             <div class="flex flex-col">
                 <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest">유효기간</h4>
-                <span id="info-expire-date" class="text-sm font-bold text-slate-700">-</span>
+                <span class="text-sm font-bold text-slate-700">${ materialDetails.expire_date || '-' }</span>
             </div>
         </div>
     </div>
@@ -118,7 +121,7 @@
             <h2 class="text-xl font-bold text-on-surface flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary">history</span> 상세 입출고 내역
             </h2>
-            <span id="product-label" class="bg-surface-container-low text-primary px-3 py-1 rounded text-xs font-bold tracking-wider"></span>
+            <span class="bg-surface-container-low text-primary px-3 py-1 rounded text-xs font-bold tracking-wider">${ productLabel }</span>
         </div>
         
         <div class="overflow-x-auto border border-surface-variant rounded-xl hide-scrollbar">
@@ -131,36 +134,115 @@
                         <th class="py-3 px-6">사용 목적</th>
                     </tr>
                 </thead>
-                <tbody id="history-tbody" class="text-sm divide-y divide-surface-container-low bg-white">
-                    <!-- Data will be injected here -->
+                <tbody class="text-sm divide-y divide-surface-container-low bg-white">
+                    <tr v-if="history.length === 0"><td colspan="4" class="text-center py-12 text-slate-400 font-medium">이력 데이터가 없습니다.</td></tr>
+                    <tr v-for="(row, idx) in history" :key="idx" :style="{ animation: `fadeIn 0.3s ease-in forwards ${idx * 0.05}s`, opacity: 0 }">
+                        <td class="py-3 px-6 whitespace-nowrap text-slate-600 font-medium">${ row.transaction_date || '-' }</td>
+                        <td class="py-3 px-6">
+                            <span v-if="row.transaction_type === '입고'" class="text-green-600 font-bold flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[16px]">south_east</span> 입고
+                            </span>
+                            <span v-else class="text-rose-600 font-bold flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[16px]">north_east</span> 출고
+                            </span>
+                        </td>
+                        <td class="py-3 px-6 text-right font-bold">${ row.quantity.toLocaleString() }</td>
+                        <td class="py-3 px-6 text-slate-500">${ row.purpose || '-' }</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
     </div>
 </section>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
 <style>
-    /* Add transition styles for UI elements */
-    .type-in { color: #16a34a; font-weight: 700; display:flex; align-items:center; gap:0.25rem;} /* text-green-600 */
-    .type-out { color: #e11d48; font-weight: 700; display:flex; align-items:center; gap:0.25rem;} /* text-rose-600 */
-    
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
     }
 </style>
-<script src="/static/js/main.js"></script>
 <script>
-    // Update main.js generated row icons for Material Symbols compatibility
-    // Since main.js writes `<i class="fa-solid fa-arrow-down-long"></i>`, 
-    // we can override the method or just let FontAwesome handle it for this table since the CSS was included in main.js.
-    // However, I removed FontAwesome from base.html. I must patch the innerHTML part in main.js, or just include FontAwesome in base.html.
-    // Actually, it's safer to just dynamically inject fontawesome here or override updateUIWithData.
-    
-    // Instead of messing with main.js, we can patch `updateUIWithData` from here or load FA.
-    // Let's load FA for this page just in case main.js relies on it.
+    const { createApp, ref, onMounted } = Vue;
+
+    createApp({
+        delimiters: ['${', '}'],
+        setup() {
+            const materials = ref([]);
+            const selectedMaterial = ref('');
+            const lots = ref([]);
+            const selectedLot = ref('');
+            const isLoading = ref(false);
+            const showResults = ref(false);
+            const summary = ref({ total_in: 0, total_out: 0, current_stock: 0 });
+            const history = ref([]);
+            const materialDetails = ref(null);
+            const productLabel = ref('');
+
+            const fetchMaterials = async () => {
+                try {
+                    const res = await fetch('/api/materials');
+                    const result = await res.json();
+                    if (result.status === 'success') materials.value = result.data;
+                } catch (err) { console.error('Error fetching materials:', err); }
+            };
+
+            const onMaterialChange = async () => {
+                // Reset downstream state
+                lots.value = [];
+                selectedLot.value = '';
+                showResults.value = false;
+                history.value = [];
+                summary.value = { total_in: 0, total_out: 0, current_stock: 0 };
+                materialDetails.value = null;
+
+                const code = selectedMaterial.value;
+                if (!code) return;
+
+                const selectedOpt = materials.value.find(m => m.code === code);
+                productLabel.value = selectedOpt ? selectedOpt.name : '';
+
+                isLoading.value = true;
+                try {
+                    const res = await fetch(`/api/lots/${code}`);
+                    const result = await res.json();
+                    if (result.status === 'success') {
+                        lots.value = result.data.length > 0 ? result.data : [];
+                    }
+                } catch (err) { console.error('Error fetching lots:', err); }
+                finally { isLoading.value = false; }
+            };
+
+            const onLotChange = async () => {
+                const code = selectedMaterial.value;
+                const lot = selectedLot.value;
+                if (!code || !lot) { showResults.value = false; return; }
+
+                isLoading.value = true;
+                try {
+                    const params = new URLSearchParams({ item_code: code, lot_no: lot });
+                    const res = await fetch(`/api/inventory?${params.toString()}`);
+                    const result = await res.json();
+                    if (result.status === 'success') {
+                        summary.value = result.summary;
+                        history.value = result.history;
+                        materialDetails.value = result.material_details || null;
+                        showResults.value = true;
+                    }
+                } catch (err) { console.error('Error fetching inventory:', err); }
+                finally { isLoading.value = false; }
+            };
+
+            onMounted(() => fetchMaterials());
+
+            return {
+                materials, selectedMaterial, lots, selectedLot,
+                isLoading, showResults, summary, history, materialDetails, productLabel,
+                onMaterialChange, onLotChange
+            };
+        }
+    }).mount('#vue-app');
 </script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 {% endblock %}
