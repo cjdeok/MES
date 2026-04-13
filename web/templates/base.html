@@ -100,12 +100,6 @@
             <a href="/material-info" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'material_info' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
                 <span class="material-symbols-outlined text-lg">inventory</span> 안전재고
             </a>
-            <a href="/purchase-dashboard" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'purchase_dashboard' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
-                <span class="material-symbols-outlined text-lg">analytics</span> 구매 대시보드
-            </a>
-            <a href="/facilities" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'facilities' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
-                <span class="material-symbols-outlined text-lg">build_circle</span> 설비 관리
-            </a>
             <a href="/inventory" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'inventory' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
                 <span class="material-symbols-outlined text-lg">search</span> 원료상세검색
             </a>
@@ -115,7 +109,22 @@
             <a href="/producible" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'producible' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
                 <span class="material-symbols-outlined text-lg">biotech</span> 생산가능수량
             </a>
-            
+            <a href="/finished-product" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'finished_product' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">package_2</span> 완제품관리
+            </a>
+            <a href="/purchase-dashboard" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'purchase_dashboard' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">analytics</span> 구매 대시보드
+            </a>
+            <a href="/facilities" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'facilities' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">build_circle</span> 설비 관리
+            </a>
+            <a href="/calibration" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'calibration' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">architecture</span> 검교정
+            </a>
+            <a href="/validation" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'validation' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
+                <span class="material-symbols-outlined text-lg">fact_check</span> 밸리데이션
+            </a>
+
             <div class="py-2">
                 <div class="px-4 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">생산 관리</div>
                 <a href="/production" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 my-1 {% if nav == 'production' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
@@ -128,16 +137,7 @@
                     <span class="material-symbols-outlined text-lg">account_tree</span> BOM 전개
                 </a>
             </div>
-            
-            <a href="/finished-product" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'finished_product' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
-                <span class="material-symbols-outlined text-lg">package_2</span> 완제품관리
-            </a>
-            <a href="/validation" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'validation' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
-                <span class="material-symbols-outlined text-lg">fact_check</span> 밸리데이션
-            </a>
-            <a href="/calibration" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'calibration' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
-                <span class="material-symbols-outlined text-lg">architecture</span> 검교정
-            </a>
+
             <a href="/upload-usage" class="px-4 py-2.5 rounded-lg transition-all flex items-center gap-3 {% if nav == 'upload_usage' %}bg-primary-fixed text-on-primary-fixed font-bold{% else %}text-slate-600 hover:bg-surface-container-low{% endif %}">
                 <span class="material-symbols-outlined text-lg">upload_file</span> 사용량 업로드
             </a>
